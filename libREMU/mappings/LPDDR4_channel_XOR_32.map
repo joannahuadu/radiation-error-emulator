@@ -1,0 +1,15 @@
+# Standard         LPDDR4
+# Number of bits     29
+# Channel             1
+# Rank                0
+# Bank                3
+# Row                15 
+# Column             10
+
+Burst_length         32
+
+Co  9:0 =  9:0
+Ba 2:0 = 13:11
+Ro 14:0 = 28:14
+
+Ch 0 = 5 10
