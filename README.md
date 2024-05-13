@@ -36,8 +36,8 @@ memUtils.get_error_Va(block.s_Vaddr, block.size, logfile, bitflip, bitidx, cfg, 
 ...
 ```
 We take the TensorRT DNN inference program as an [example](./example).
-- Dataset: 
-- Trained model:
+- Dataset: download from
+- Trained model: download from
   
 1. Build the program linking with *libREMU_mem.so*.
 ```
