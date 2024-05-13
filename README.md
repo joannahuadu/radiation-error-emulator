@@ -3,7 +3,7 @@ Artifacts of USENIX NSDI 2025 Submission #519: A Case for Application-Aware Spac
 
 ## How to build the emulator?
 Generate the dynamic link library *libREMU_mem.so*.
-The details of the emulator are in [./libREMU/README.md](./libREMU/README.md).
+The details of our emulator are in [./libREMU/README.md](./libREMU/README.md).
 ```
 cd libREMU
 mkdir build
