@@ -20,8 +20,8 @@ include_directories(/usr/include/aarch64-linux-gnu/)
 link_directories(/usr/lib/aarch64-linux-gnu/)
 
 
-set(ERROR_BITMAP_LIB_DIR "/workplace/data/libREMUBlock/build")
-find_library(ERROR_BITMAP_LIB REMU_memblock PATHS ${ERROR_BITMAP_LIB_DIR} REQUIRED)
+set(ERROR_BITMAP_LIB_DIR "/path/libREMU/build")
+find_library(ERROR_BITMAP_LIB REMU_mem PATHS ${ERROR_BITMAP_LIB_DIR} REQUIRED)
 message(STATUS "${ERROR_BITMAP_LIB_DIR}")
 message(STATUS "${ERROR_BITMAP_LIB}")
 
