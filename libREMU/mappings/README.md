@@ -2,7 +2,7 @@
 Following https://github.com/CMU-SAFARI/ramulator, users can specify how to map the physical address to the DRAM hierarchy, such as channel/rank/bank/row/column.
 We give three mapping files for LPDDR4 (8GB, 128-bit):
 
-- **S1(Default)**: [LPDDR4_RoRaBaChCo.map](./LPDDR4_RoRaBaChCo.map)
+- **S1**: [LPDDR4_RoRaBaChCo.map](./LPDDR4_RoRaBaChCo.map) (Default)
 - **S2**: [LPDDR4_row_interleaving_16.map](./LPDDR4_row_interleaving_16.map)
 - **S3**: [LPDDR4_channel_XOR_16.map](./LPDDR4_channel_XOR_16.map)
 
