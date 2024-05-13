@@ -220,6 +220,7 @@ int main(int argc, char** argv)
 
     uintptr_t Vaddr = reinterpret_cast<uintptr_t>(trtModelStream);
     std::cout << "vaddr: "  << std::hex << Vaddr <<"-"<<std::dec <<size << std::endl;
+    // if lineidx == 0, do DNN inference without any error.
     if(lineidx){
         std::map<int, int> errorMap = loadErrors(error_file, lineidx); 
         MemUtils memUtils;
