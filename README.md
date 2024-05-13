@@ -48,7 +48,7 @@ make
 ```
 ./resnet50 -s [.wts] [.engine] 
 ```
-4. Execute the program under the bit-flip errors.
+4. Execute the program under the bit-flip errors (Require *sudo* permissions).
 ```
 python ../run.py
 ```
