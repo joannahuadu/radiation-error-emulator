@@ -15,14 +15,14 @@ make
 ## Plug-and-play with APIs
 The use of our emulator is plug-and-play through compiler-based instrumentation linking with the dynamic-link library *libREMU_mem.so*.
 In [CMakeLists.txt] (./CMakeLists.txt):
-'''
+```
 set(ERROR_BITMAP_LIB_DIR "./libREMU/build")
 find_library(ERROR_BITMAP_LIB REMU_mem PATHS ${ERROR_BITMAP_LIB_DIR} REQUIRED)
 message(STATUS "${ERROR_BITMAP_LIB_DIR}")
 message(STATUS "${ERROR_BITMAP_LIB}")
 ...
 target_link_libraries(xxx ${ERROR_BITMAP_LIB})
-'''
+```
 
 We expose a rich API for ease of use, and just two lines of code can achieve error injection into the ROI of process space. 
 
