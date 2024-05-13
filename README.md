@@ -14,7 +14,7 @@ make
 
 ## Plug-and-play with APIs
 The use of our emulator is plug-and-play through compiler-based instrumentation linking with the dynamic-link library *libREMU_mem.so*.
-Linking in [CMakeLists.txt](./CMakeLists.txt):
+Linking in [CMakeLists.txt](./example/CMakeLists.txt):
 ```
 set(ERROR_BITMAP_LIB_DIR "./libREMU/build")
 find_library(ERROR_BITMAP_LIB REMU_mem PATHS ${ERROR_BITMAP_LIB_DIR} REQUIRED)
