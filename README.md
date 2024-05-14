@@ -35,7 +35,7 @@ target_link_libraries(xxx ${ERROR_BITMAP_LIB})
 We expose a rich API for ease of use, and just two lines of code can achieve error injection into the ROI of process space. 
 ```
 ...
-# #include "mem_utils.h"
+#include "mem_utils.h"
 MemUtils memUtils;
 # Specify the sensitive areas, Vaddr is the virtual address in the process space (i.e., start address of ROI), size is the ROI's size, and bias is the location of the specified area.
 Pmem block =  memUtils.get_block_in_pmems(Vaddr, size, bias);
