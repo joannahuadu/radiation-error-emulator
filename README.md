@@ -39,7 +39,17 @@ We take the TensorRT DNN inference program as an [example](./example).
 - Dataset: download from
 - Trained model: download from
   
-1. Build the program linking with *libREMU_mem.so*.
+1. Prerequisites
+    
+    To build the example, following software versions are recommended.
+    - cuda-10.2.300 + cuDNN-8.2.1
+    - GNU Make 4.1
+    - cmake 3.10.2
+    - g++ (Ubuntu/Linaro 7.5.0-3ubuntu1~18.04) 7.5.0
+    - OpenCV 4.1.1
+    - tensorrt 8.2.1.9
+
+2. Build the program linking with *libREMU_mem.so*.
 ```
 cd example
 mkdir build
