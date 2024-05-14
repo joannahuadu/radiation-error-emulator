@@ -42,13 +42,13 @@ target_link_libraries(xxx ${ERROR_BITMAP_LIB})
 ```
 
 We expose a rich API for ease of use, and just two lines of code can achieve error injection into the ROI of process space. 
-```
+```cpp
 ...
 #include "mem_utils.h"
 MemUtils memUtils;
-# Specify the sensitive areas, Vaddr is the virtual address in the process space (i.e., start address of ROI), size is the ROI's size, and bias is the location of the specified area.
+// Specify the sensitive areas, Vaddr is the virtual address in the process space (i.e., start address of ROI), size is the ROI's size, and bias is the location of the specified area.
 Pmem block =  memUtils.get_block_in_pmems(Vaddr, size, bias);
-# Get the error virtual addresses and flip the most significant bit in each byte.
+// Get the error virtual addresses and flip the most significant bit in each byte.
 memUtils.get_error_Va(block.s_Vaddr, block.size, logfile, bitflip, bitidx, cfg, mapping, errorMap);
 ...
 ```
@@ -68,6 +68,7 @@ We take the TensorRT DNN inference program as an [example](./example).
     - TensorRT 8.2.1.9
     - Python 3.6.9
 
+
 2. Build the program linking with *libREMU_mem.so*.
 ```
 cd example
@@ -76,11 +77,18 @@ cd build
 cmake ..
 make
 ```
-3. Create the TensorRT inference engine to match your hardware computing capacity.
+3. Configure user-defined inputs of our emulator. Change your path.
+```cpp
+    // resnet50_inference_error.cpp:199-201
+    std::string cfg = "/path/libREMU/configs/LPDDR4-config.cfg";
+    std::string mapping = "/path/libREMU/mappings/LPDDR4_row_interleaving_16.map";
+    std::string error_file = "/path/example/error_counts_"+std::to_string(bitflip) + ".txt";
+```
+4. Create the TensorRT inference engine to match your hardware computing capacity.
 ```
 ./resnet50 -s [.wts] [.engine] 
 ```
-4. Execute the program under the bit-flip errors, we envelope the command in Python scripts.
+5. Execute the program under the bit-flip errors, we envelope the command in Python scripts.
 ```
 python ../run.py
 ```
