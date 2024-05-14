@@ -27,7 +27,12 @@ The details of our emulator are in [./libREMU/README.md](./libREMU/README.md).
     cd build
     cmake ..
     make
-
+    ```
+    
+    ```sh
+    mkdir build
+    cd build
+    ```
 ## Plug-and-play with APIs
 The use of our emulator is plug-and-play through compiler-based instrumentation linking with the dynamic-link library *libREMU_mem.so*.
 The linking example is in [CMakeLists.txt](./example/CMakeLists.txt):
