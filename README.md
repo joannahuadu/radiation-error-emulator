@@ -21,17 +21,19 @@ Artifacts of USENIX NSDI 2025 Submission #519: A Case for Application-Aware Spac
       
 3. We build our emulator as a dynamic link library *libREMU_mem.so*.
 The details of our emulator are in [./libREMU/README.md](./libREMU/README.md).
-    ```sh
-    cd libREMU
-    mkdir build
-    cd build
-    cmake ..
-    make
-    ```
+
+ ```sh
+ cd libREMU
+ mkdir build
+ cd build
+ cmake ..
+ make
+ ```
 
 ## Plug-and-play with APIs
 The use of our emulator is plug-and-play through compiler-based instrumentation linking with the dynamic-link library *libREMU_mem.so*.
 The linking example is in [CMakeLists.txt](./example/CMakeLists.txt):
+
 ```cmake
 set(ERROR_BITMAP_LIB_DIR "/path/libREMU/build")
 find_library(ERROR_BITMAP_LIB REMU_mem PATHS ${ERROR_BITMAP_LIB_DIR} REQUIRED)
@@ -42,6 +44,7 @@ target_link_libraries(xxx ${ERROR_BITMAP_LIB})
 ```
 
 We expose a rich API for ease of use, and just two lines of code can achieve error injection into the ROI of process space. 
+
 ```cpp
 ...
 #include "mem_utils.h"
@@ -70,6 +73,7 @@ We take the TensorRT DNN inference program as an [example](./example).
 
 
 2. Build the program linking with *libREMU_mem.so*.
+
 ```sh
 cd example
 mkdir build
@@ -78,6 +82,7 @@ cmake ..
 make
 ```
 3. Configure user-defined inputs of our emulator. Change your path.
+
 ```cpp
     // e.g., resnet50_inference_error.cpp:199-201
     std::string cfg = "/path/libREMU/configs/LPDDR4-config.cfg";
@@ -85,10 +90,12 @@ make
     std::string error_file = "/path/example/error_counts_"+std::to_string(bitflip) + ".txt";
 ```
 4. Create the TensorRT inference engine to match your hardware computing capacity.
+
 ```sh
 ./resnet50 -s [.wts] [.engine] 
 ```
 5. Execute the program under the bit-flip errors, we envelope the command in Python scripts.
+
 ```sh
 python ../run.py
 ```
