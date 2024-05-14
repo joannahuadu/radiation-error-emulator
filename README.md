@@ -4,13 +4,20 @@ Artifacts of USENIX NSDI 2025 Submission #519: A Case for Application-Aware Spac
 ## How to build the emulator?
 
 1. Prerequisites
-    
-    To build the example, following software versions are recommended.
+    To build our emulator, the following software versions are recommended.
     - GNU Make 4.1
-    - cmake 3.10.2
-    - g++ 7.5.0
-
-2. Generate the dynamic link library *libREMU_mem.so*.
+    - CMake 3.10.2
+    - C++11
+    - g++7.5.0
+    We support the embedded hardware NVIDIA Jetson Xavier NX with 8GB 128-bit LPDDR4x. Supports for other hardware will be released soon.
+    - Machine: aarch64
+    - CUDA Arch BIN: 7.2
+    - L4T: 32.7.1
+    - Jetpack: 4.6.1
+    - System: Linux
+    - Distribution: Ubuntu 18.04
+      
+2. We build our emulator as a dynamic link library *libREMU_mem.so*.
 The details of our emulator are in [./libREMU/README.md](./libREMU/README.md).
     ```
     cd libREMU
@@ -50,12 +57,14 @@ We take the TensorRT DNN inference program as an [example](./example).
 1. Prerequisites
     
     To build the example, following software versions are recommended.
-    - cuda-10.2.300 + cuDNN-8.2.1
+    - CUDA-10.2.300 + cuDNN-8.2.1
     - GNU Make 4.1
-    - cmake 3.10.2
-    - g++ 7.5.0
+    - CMake 3.10.2
+    - C++11
+    - g++7.5.0
     - OpenCV 4.1.1
-    - tensorrt 8.2.1.9
+    - TensorRT 8.2.1.9
+    - Python 3.6.9
 
 2. Build the program linking with *libREMU_mem.so*.
 ```
