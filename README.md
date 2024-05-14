@@ -4,7 +4,8 @@ Artifacts of USENIX NSDI 2025 Submission #519: A Case for Application-Aware Spac
 ## How to build the emulator?
 
 1. Prerequisites
-    To build our emulator, the following software versions are recommended.
+
+   To build our emulator, the following software versions are recommended.
     - GNU Make 4.1
     - CMake 3.10.2
     - C++11
@@ -18,7 +19,7 @@ Artifacts of USENIX NSDI 2025 Submission #519: A Case for Application-Aware Spac
     - System: Linux
     - Distribution: Ubuntu 18.04
       
-2. We build our emulator as a dynamic link library *libREMU_mem.so*.
+3. We build our emulator as a dynamic link library *libREMU_mem.so*.
 The details of our emulator are in [./libREMU/README.md](./libREMU/README.md).
     ```
     cd libREMU
@@ -52,12 +53,12 @@ memUtils.get_error_Va(block.s_Vaddr, block.size, logfile, bitflip, bitidx, cfg, 
 ...
 ```
 We take the TensorRT DNN inference program as an [example](./example).
-- Dataset: download from
-- Trained model: download from
+- Dataset: Download from [sample.zip](https://drive.google.com/file/d/1QHEVYMOCAgnGyAfnzhESHlEvuuMktfB_/view?usp=drive_link)
+- Trained model: Download from [resnet50_resisc45.wts](https://drive.google.com/file/d/1aeASCls2B8Zk1925b7T10Ay89_3of0ku/view?usp=drive_link)
   
 1. Prerequisites
     
-    To build the example, following software versions are recommended.
+    To build the example, the following software versions are recommended.
     - CUDA-10.2.300 + cuDNN-8.2.1
     - GNU Make 4.1
     - CMake 3.10.2
