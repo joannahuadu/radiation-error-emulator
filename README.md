@@ -21,7 +21,7 @@ Artifacts of USENIX NSDI 2025 Submission #519: A Case for Application-Aware Spac
       
 3. We build our emulator as a dynamic link library *libREMU_mem.so*.
 The details of our emulator are in [./libREMU/README.md](./libREMU/README.md).
-    ```
+    ```sh
     cd libREMU
     mkdir build
     cd build
@@ -32,7 +32,7 @@ The details of our emulator are in [./libREMU/README.md](./libREMU/README.md).
 ## Plug-and-play with APIs
 The use of our emulator is plug-and-play through compiler-based instrumentation linking with the dynamic-link library *libREMU_mem.so*.
 The linking example is in [CMakeLists.txt](./example/CMakeLists.txt):
-```
+```cmake
 set(ERROR_BITMAP_LIB_DIR "/path/libREMU/build")
 find_library(ERROR_BITMAP_LIB REMU_mem PATHS ${ERROR_BITMAP_LIB_DIR} REQUIRED)
 message(STATUS "${ERROR_BITMAP_LIB_DIR}")
@@ -70,7 +70,7 @@ We take the TensorRT DNN inference program as an [example](./example).
 
 
 2. Build the program linking with *libREMU_mem.so*.
-```
+```sh
 cd example
 mkdir build
 cd build
@@ -85,11 +85,11 @@ make
     std::string error_file = "/path/example/error_counts_"+std::to_string(bitflip) + ".txt";
 ```
 4. Create the TensorRT inference engine to match your hardware computing capacity.
-```
+```sh
 ./resnet50 -s [.wts] [.engine] 
 ```
 5. Execute the program under the bit-flip errors, we envelope the command in Python scripts.
-```
+```sh
 python ../run.py
 ```
  (Require *sudo* permissions, since Linux 4.0 only users with the CAP_SYS_ADMIN capability can get physical frame numbers (PFNs))
