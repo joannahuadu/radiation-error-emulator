@@ -59,11 +59,11 @@ We take the TensorRT DNN inference program as an [example](./example).
 1. Prerequisites
     
     To build the example, the following software versions are recommended.
-    - CUDA-10.2.300 + cuDNN-8.2.1
     - GNU Make 4.1
     - CMake 3.10.2
     - C++11
     - g++7.5.0
+    - CUDA-10.2.300 + cuDNN-8.2.1
     - OpenCV 4.1.1
     - TensorRT 8.2.1.9
     - Python 3.6.9
