@@ -9,6 +9,7 @@ Artifacts of USENIX NSDI 2025 Submission #519: A Case for Application-Aware Spac
     - CMake 3.10.2
     - C++11
     - g++7.5.0
+    
     We support the embedded hardware NVIDIA Jetson Xavier NX with 8GB 128-bit LPDDR4x. Supports for other hardware will be released soon.
     - Machine: aarch64
     - CUDA Arch BIN: 7.2
