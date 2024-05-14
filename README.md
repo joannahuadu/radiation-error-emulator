@@ -76,7 +76,7 @@ cd build
 cmake ..
 make
 ```
-3. Create the TensorRT inference engine to match your hardware computing capacity. See details at https://github.com/wang-xinyu/tensorrtx.
+3. Create the TensorRT inference engine to match your hardware computing capacity.
 ```
 ./resnet50 -s [.wts] [.engine] 
 ```
