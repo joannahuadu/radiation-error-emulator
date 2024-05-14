@@ -151,7 +151,7 @@ std::map<int, int> loadErrors(const std::string file, int lineidx)
         }
         infile.close();
     } else {
-        std::cerr << "Error: Unable to open file" << std::endl;
+        std::cerr << "Error: Unable to open error model file" << std::endl;
         return error_count;
     }
     return error_count;
