@@ -2,15 +2,23 @@
 Artifacts of USENIX NSDI 2025 Submission #519: A Case for Application-Aware Space Radiation Tolerance in Orbital Computing
 
 ## How to build the emulator?
-Generate the dynamic link library *libREMU_mem.so*.
+
+1. Prerequisites
+    
+    To build the example, following software versions are recommended.
+    - GNU Make 4.1
+    - cmake 3.10.2
+    - g++ 7.5.0
+
+2. Generate the dynamic link library *libREMU_mem.so*.
 The details of our emulator are in [./libREMU/README.md](./libREMU/README.md).
-```
-cd libREMU
-mkdir build
-cd build
-cmake ..
-make
-```
+    ```
+    cd libREMU
+    mkdir build
+    cd build
+    cmake ..
+    make
+    ```
 
 ## Plug-and-play with APIs
 The use of our emulator is plug-and-play through compiler-based instrumentation linking with the dynamic-link library *libREMU_mem.so*.
@@ -45,7 +53,7 @@ We take the TensorRT DNN inference program as an [example](./example).
     - cuda-10.2.300 + cuDNN-8.2.1
     - GNU Make 4.1
     - cmake 3.10.2
-    - g++ (Ubuntu/Linaro 7.5.0-3ubuntu1~18.04) 7.5.0
+    - g++ 7.5.0
     - OpenCV 4.1.1
     - tensorrt 8.2.1.9
 
