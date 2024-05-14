@@ -84,10 +84,10 @@ make
 3. Configure user-defined inputs of our emulator. Change your path.
 
 ```cpp
-    // e.g., resnet50_inference_error.cpp:199-201
-    std::string cfg = "/path/libREMU/configs/LPDDR4-config.cfg";
-    std::string mapping = "/path/libREMU/mappings/LPDDR4_row_interleaving_16.map";
-    std::string error_file = "/path/example/error_counts_"+std::to_string(bitflip) + ".txt";
+ // e.g., resnet50_inference_error.cpp:199-201
+ std::string cfg = "/path/libREMU/configs/LPDDR4-config.cfg";
+ std::string mapping = "/path/libREMU/mappings/LPDDR4_row_interleaving_16.map";
+ std::string error_file = "/path/example/error_counts_"+std::to_string(bitflip) + ".txt";
 ```
 4. Create the TensorRT inference engine to match your hardware computing capacity.
 
