@@ -80,7 +80,8 @@ make
 ```
 ./resnet50 -s [.wts] [.engine] 
 ```
-4. Execute the program under the bit-flip errors (Require *sudo* permissions, since Linux 4.0 only users with the CAP_SYS_ADMIN capability can get physical frame numbers (PFNs)).
+4. Execute the program under the bit-flip errors, we envelope the command in Python scripts.
 ```
 python ../run.py
 ```
+ (Require *sudo* permissions, since Linux 4.0 only users with the CAP_SYS_ADMIN capability can get physical frame numbers (PFNs))
