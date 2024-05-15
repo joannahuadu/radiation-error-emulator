@@ -29,4 +29,4 @@ This project includes third-party libraries, which are subject to the following 
 1. Library: ramulator
    License: MIT License
    URL: https://github.com/CMU-SAFARI/ramulator
-   License Text: See (ramulator_LICENSE)[licenses/ramulator_LICENSE.txt]
+   License Text: See `licenses/ramulator_LICENSE`
