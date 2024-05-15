@@ -196,9 +196,9 @@ int main(int argc, char** argv)
     }
 
     // change your path
-    std::string cfg = "/workplace/data/libREMU/configs/LPDDR4-config.cfg";
-    std::string mapping = "/workplace/data/libREMU/mappings/LPDDR4_row_interleaving_16.map";
-    std::string error_file = "/workplace/data/example/error_counts_"+std::to_string(bitflip) + ".txt";
+    std::string cfg = "/path/libREMU/configs/LPDDR4-config.cfg";
+    std::string mapping = "/path/libREMU/mappings/LPDDR4_row_interleaving_16.map";
+    std::string error_file = "/path/example/error_counts_"+std::to_string(bitflip) + ".txt";
     std::cout << "mapping: " << mapping << std::endl;
 
     char *trtModelStream{nullptr};
