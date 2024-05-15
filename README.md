@@ -55,6 +55,7 @@ Pmem block =  memUtils.get_block_in_pmems(Vaddr, size, bias);
 memUtils.get_error_Va(block.s_Vaddr, block.size, logfile, bitflip, bitidx, cfg, mapping, errorMap);
 ...
 ```
+### Example
 We take the TensorRT DNN inference program as an [example](./example).
 - Dataset: Download from [sample.zip](https://drive.google.com/file/d/1QHEVYMOCAgnGyAfnzhESHlEvuuMktfB_/view?usp=drive_link)
 - Trained model: Download from [resnet50_resisc45.wts](https://drive.google.com/file/d/1aeASCls2B8Zk1925b7T10Ay89_3of0ku/view?usp=drive_link)
