@@ -1,6 +1,8 @@
 # radiation-error-emulator
 Artifacts of USENIX NSDI 2025 Submission #519: A Case for Application-Aware Space Radiation Tolerance in Orbital Computing
 
+To further quantify radiation-caused bit-flip errors' impacts on diverse in-orbit applications at scale, a flexible and reconfigurable hardware-in-the-loop space radiation emulator is desirable to facilitate both the exploration of applications’ error behaviors and the availability of application-aware tolerant design.
+
 ## How to build the emulator?
 
 1. Prerequisites
@@ -11,7 +13,7 @@ Artifacts of USENIX NSDI 2025 Submission #519: A Case for Application-Aware Spac
     - C++11
     - g++7.5.0
     
-    We support the embedded hardware NVIDIA Jetson Xavier NX with 8GB 128-bit LPDDR4x. Supports for other hardware will be released soon.
+    We support the embedded hardware NVIDIA Jetson Xavier NX with 8GB 128-bit LPDDR4x, which is used for the in-service satellite computing payload.  We would like to extend the support for other platforms in our future work.
     - Machine: aarch64
     - CUDA Arch BIN: 7.2
     - L4T: 32.7.1
