@@ -1,5 +1,5 @@
 # radiation-error-emulator
-Artifacts of USENIX NSDI 2025 Submission #519: A Case for Application-Aware Space Radiation Tolerance in Orbital Computing
+Artifacts of paper: A Case for Application-Aware Space Radiation Tolerance in Orbital Computing
 
 To further quantify radiation-caused bit-flip errors' impacts on diverse in-orbit applications at scale, a flexible and reconfigurable hardware-in-the-loop space radiation emulator is desirable to facilitate both the exploration of applications’ error behaviors and the availability of application-aware tolerant design.
 
