@@ -1,5 +1,4 @@
-# radiation-error-emulator
-Artifacts of paper: A Case for Application-Aware Space Radiation Tolerance in Orbital Computing
+# radiation-error-emulator (REMUv1.0)
 
 To further quantify radiation-caused bit-flip errors' impacts on diverse in-orbit applications at scale, a flexible and reconfigurable hardware-in-the-loop space radiation emulator is desirable to facilitate both the exploration of applications’ error behaviors and the availability of application-aware tolerant design.
 
