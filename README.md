@@ -50,7 +50,12 @@ We expose a rich API for ease of use, and just two lines of code can achieve err
 ...
 #include "mem_utils.h"
 MemUtils memUtils;
-// Specify the sensitive areas, Vaddr is the virtual address in the process space (i.e., start address of ROI), size is the ROI's size, and bias is the location of the specified area.
+// Option 1: inject errors in the global area, Vaddr is the virtual address in the process space (i.e., the start address of ROI), and size is the ROI's size. Set the start (e.g., 300B) and end bytes (e.g., 500000B) to be omitted, because these bytes can easily cause inference to abort.
+uintptr_t Vaddr = Vaddr + 300;
+// Get the error virtual addresses and flip the most significant bit in each byte.
+memUtils.get_error_Va(Vaddr, size-500000, logfile, bitflip, bitidx, cfg, mapping, errorMap);
+
+// Option 2: Specify the sensitive areas, Vaddr is the virtual address in the process space (i.e., the start address of ROI), size is the ROI's size, and bias is the location of the specified area.
 Pmem block =  memUtils.get_block_in_pmems(Vaddr, size, bias);
 // Get the error virtual addresses and flip the most significant bit in each byte.
 memUtils.get_error_Va(block.s_Vaddr, block.size, logfile, bitflip, bitidx, cfg, mapping, errorMap);
