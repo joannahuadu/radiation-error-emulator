@@ -1,4 +1,4 @@
-# An emulator of radiation-induced bit-flip errors
+# REMUv1.0
 We mainly focus on bit-flip errors in space caused by single-event upsets (SEUs) and multiple-cell upsets (MCUs).
 
 ### Configure user-defined inputs of our emulator
