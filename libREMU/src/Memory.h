@@ -133,7 +133,7 @@ public:
         for(int lvl = 0; lvl < int(T::Level::MAX)-2 ; lvl++){
             // cout<<spec->level_str[lvl]<<": ";
             if (has_ch_ra_ba_xor[lvl].size() == 0){
-                //TODO: bank、channel and rank in has_ch_ra_ba are fixed. (ref_xor_base) no need to randomly set.
+                // bank、channel and rank in has_ch_ra_ba are fixed. There is no need to randomly set 'ref_xor_base'.
                 if(fix_lvl[lvl]){
                     if(has_ch_ra_ba[lvl].size()!=0) ofs += (s_lvl[lvl]<<has_ch_ra_ba[lvl][0]);
                     else ofs += s_lvl[lvl];
@@ -151,12 +151,12 @@ public:
             }else{
                 if(fix_lvl[lvl]){
                     ref_xor_base[lvl] = s_lvl[lvl];
-                    xor_base[lvl]=s_lvl[lvl];
+                    xor_base[lvl] = s_lvl[lvl];
                     // cout<<"ref_xor_base: "<<ref_xor_base[lvl]<<" ";
                     // cout<<"xor_base: "<<xor_base[lvl]<<endl;
                     continue;
                 }
-                //TODO: bank、channel and rank in has_ch_ra_ba are fixed. (ref_xor_base) no need to randomly set.
+                // bank、channel and rank in has_ch_ra_ba are fixed. There is no need to randomly set 'ref_xor_base'.
                 // (xor_base) is fixed. only one. 
                 for (int i = 0; i<has_ch_ra_ba[lvl].size(); i++){
                     std::uniform_int_distribution<int64_t> bit_rand(0,1);
