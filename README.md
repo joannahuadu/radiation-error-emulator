@@ -12,7 +12,7 @@ To further quantify radiation-caused SEUs/MCUs' impacts on diverse in-orbit appl
     - C++11
     - g++7.5.0
     
-    We support the embedded hardware NVIDIA Jetson Xavier NX with 8GB 128-bit LPDDR4x, which is used for the in-service satellite computing payload.  We would like to extend the support for other platforms in our future work.
+    We support the embedded hardware NVIDIA Jetson Xavier NX with 8GB 128-bit LPDDR4x (LPDDR4_8Gb_x16), which is used for the in-service satellite computing payload.  We would like to extend the support for other platforms in our future work.
     - Machine: aarch64
     - CUDA Arch BIN: 7.2
     - L4T: 32.7.1
