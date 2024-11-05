@@ -8,10 +8,10 @@ We mainly focus on bit-flip errors in space caused by single-event upsets (SEUs)
 
 ### End-to-end error Mapping
 - (*mem_utils.h:getPmems*) We leverage *[/proc/pid/pagemap](https://www.kernel.org/doc/Documentation/vm/pagemap.txt)* interface in the kernel to let a userspace process find out which physical frame each virtual page is mapped to. Require sudo permissions, since Linux 4.0 only users with the CAP_SYS_ADMIN capability can get physical frame numbers (PFNs).
-- (*error_bitmap.h:REMU*) We improve the *[DRAM simulator](https://github.com/CMU-SAFARI/ramulator)* (*[Memory.h](./src/Memory.h)*) to make bit-flip errors mapping from physical address to DRAM hierarchy.
+- (*error_bitmap.h:REMU*) We improve the *[DRAM simulator](https://github.com/CMU-SAFARI/ramulator)* (*[Memory.h](./src/Memory.h)*) to automate SEUs/MCUs mapping from physical address to DRAM hierarchy.
 
 Note that the hardware platform is supposed to be matched with your DRAM configurations.
-Currently *mem_utils.h* is specified to [LPDDR4-config.cfg](./configs/LPDDR4-config.cfg), and the interface for other configurations is to be released.
+Currently *mem_utils.h* is specified to (LPDDR4_8Gb_x16) [LPDDR4-config.cfg](./configs/LPDDR4-config.cfg), and the interface for other configurations is to be released.
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](../LICENSE) file for details.
