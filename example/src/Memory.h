@@ -50,10 +50,8 @@ public:
     bool dump_mapping;
     vector<int> s_vec;
     vector<int> e_vec;
-    int s_ro;
-    int e_ro;
-    int s_co;
-    int e_co;
+    vector<int> s_lvl, e_lvl;
+    vector<bool> fix_lvl;
     int byte_idx;
     // int ofs_bits;
     vector<vector<int>> has_ch_ra_ba_xor;
@@ -98,6 +96,9 @@ public:
     void getAddressInfo(uintptr_t s_paddr, uintptr_t e_paddr) {
         s_vec.resize(addr_bits.size());
         e_vec.resize(addr_bits.size());
+        s_lvl.resize(addr_bits.size());
+        e_lvl.resize(addr_bits.size());
+        fix_lvl.resize(addr_bits.size());
         // cout << hex << s_paddr << " " << e_paddr << endl;
         s_paddr = clear_lower_bits(s_paddr, byte_idx);
         e_paddr = clear_lower_bits(e_paddr, byte_idx);
@@ -106,14 +107,16 @@ public:
 
 
     void offset(vector<uintptr_t>& errors, int ro_ref, int co_ref, int error_bit_num, int seed){
-        // cout <<"[offset]row and column range: "<< dec << s_ro << " " << e_ro <<" " << s_co << " " << e_co << endl;
+        // cout <<"[offset]row and column range: "<< dec << s_lvl[int(T::Level::Row)] << " " << e_lvl[int(T::Level::Row)] <<" " << s_lvl[int(T::Level::Column)] << " " << e_lvl[int(T::Level::Column)] << endl;
         vector<ErrorIndex> error_index_map = selectErrorBits(ro_ref, co_ref, error_bit_num, seed);
         // cout<<"[error bit map](row, column) of error bits: "<<endl;
         // for (const auto& index : error_index_map) {
         //     std::cout << "(" << index.row << ", " << index.column << ") ";   
         // }
         // cout<<endl;
-        
+
+        if (s_lvl[int(T::Level::Row)] == e_lvl[int(T::Level::Row)]) if(s_lvl[int(T::Level::Bank)] == e_lvl[int(T::Level::Bank)]) fix_lvl[int(T::Level::Bank)]=true;
+        if ((s_lvl[int(T::Level::Row)] == e_lvl[int(T::Level::Row)]) && (s_lvl[int(T::Level::Bank)] == e_lvl[int(T::Level::Bank)]) ) if(s_lvl[int(T::Level::Channel)] == e_lvl[int(T::Level::Channel)]) fix_lvl[int(T::Level::Channel)]=true;
         int64_t offset_byte;
         int64_t offset_item;
         int64_t ofs = 0;
@@ -130,7 +133,13 @@ public:
         for(int lvl = 0; lvl < int(T::Level::MAX)-2 ; lvl++){
             // cout<<spec->level_str[lvl]<<": ";
             if (has_ch_ra_ba_xor[lvl].size() == 0){
-                //TODO: bank、channel and rank in has_ch_ra_ba are fixed. (ref_xor_base) no need to randomly set.
+                // bank、channel and rank in has_ch_ra_ba are fixed. There is no need to randomly set 'ref_xor_base'.
+                if(fix_lvl[lvl]){
+                    if(has_ch_ra_ba[lvl].size()!=0) ofs += (s_lvl[lvl]<<has_ch_ra_ba[lvl][0]);
+                    else ofs += s_lvl[lvl];
+                    // cout<<"ofs: "<<ofs<<endl;
+                    continue;
+                }
                 for(const auto& elem : has_ch_ra_ba[lvl]){
                     std::uniform_int_distribution<int64_t> bit_rand(0,1);
                     // cout<<" [elements] "<<elem<<" ";
@@ -140,7 +149,14 @@ public:
                     // cout<<"ofs: "<<ofs<<endl;
                 }
             }else{
-                //TODO: bank、channel and rank in has_ch_ra_ba are fixed. (ref_xor_base) no need to randomly set.
+                if(fix_lvl[lvl]){
+                    ref_xor_base[lvl] = s_lvl[lvl];
+                    xor_base[lvl] = s_lvl[lvl];
+                    // cout<<"ref_xor_base: "<<ref_xor_base[lvl]<<" ";
+                    // cout<<"xor_base: "<<xor_base[lvl]<<endl;
+                    continue;
+                }
+                // bank、channel and rank in has_ch_ra_ba are fixed. There is no need to randomly set 'ref_xor_base'.
                 // (xor_base) is fixed. only one. 
                 for (int i = 0; i<has_ch_ra_ba[lvl].size(); i++){
                     std::uniform_int_distribution<int64_t> bit_rand(0,1);
@@ -177,8 +193,13 @@ public:
                 // cout<<spec->level_str[lvl]<<": ";
                 index_xor_result[lvl] = index_xor_index[lvl] xor ref_xor_result[lvl];
                 // cout<<"index_xor_result: "<<index_xor_result[lvl]<<" ";
+                if(fix_lvl[lvl]){
+                   if ((index_xor_result[lvl] != xor_base[lvl])){
+                    flag = false;
+                    break;
+                   }
+                }
                 if ((index_xor_result[lvl] > xor_base[lvl])){
-                    //TODO index_xor_result[lvl] != xor_base[lvl]
                     flag = false;
                     break;
                 }else{
@@ -194,8 +215,7 @@ public:
                             (co_offset_item << mapping_scheme[int(T::Level::Column)][0][0]) +
                             ofs + xor_offset;
             } else if (index.column != -1) {
-                // std::cout << "e_ro: " << e_ro << std::endl;
-                offset_item = (e_ro << mapping_scheme[int(T::Level::Row)][0][0]) + (co_offset_item << mapping_scheme[int(T::Level::Column)][0][0]) + ofs + xor_offset;
+                offset_item = (e_lvl[int(T::Level::Row)] << mapping_scheme[int(T::Level::Row)][0][0]) + (co_offset_item << mapping_scheme[int(T::Level::Column)][0][0]) + ofs + xor_offset;
             } else {
                 throw std::invalid_argument("Invalid row index and column index");
             }
@@ -324,16 +344,21 @@ public:
     void apply_mapping(uintptr_t s_paddr, uintptr_t e_paddr){
         has_ch_ra_ba_xor.resize(int(T::Level::MAX));
         has_ch_ra_ba.resize(int(T::Level::MAX));
+
+        for(int lvl = 0; lvl < int(T::Level::MAX); lvl++){
+            int range_max = mapping_scheme[lvl].size()-1;
+            int idx = mapping_scheme[lvl][0].size()-1;
+            if((range_max!=-1) && (idx!=-1)) {
+                s_lvl[lvl] = get_bit_at_range(s_paddr, mapping_scheme[lvl][0][idx], mapping_scheme[lvl][range_max][idx]);
+                e_lvl[lvl] = get_bit_at_range(e_paddr, mapping_scheme[lvl][0][idx], mapping_scheme[lvl][range_max][idx]);
+            }else{
+                s_lvl[lvl] = 0;
+                e_lvl[lvl] = 0;
+            }
+            // cout << spec->level_str[lvl]<< ": "<< s_lvl[lvl] << "-" << e_lvl[lvl] << endl;
+        }
         int co_range_max = mapping_scheme[int(T::Level::Column)].size() - 1;
         int ro_range_max = mapping_scheme[int(T::Level::Row)].size() - 1; 
-        // row and column range
-        // cout << hex << s_paddr << " " << e_paddr << endl;
-        s_ro = get_bit_at_range(s_paddr, mapping_scheme[int(T::Level::Row)][0][0], mapping_scheme[int(T::Level::Row)][ro_range_max][0]);
-        e_ro = get_bit_at_range(e_paddr, mapping_scheme[int(T::Level::Row)][0][0], mapping_scheme[int(T::Level::Row)][ro_range_max][0]);
-        s_co = get_bit_at_range(s_paddr, mapping_scheme[int(T::Level::Column)][0][0], mapping_scheme[int(T::Level::Column)][co_range_max][0]);
-        e_co = get_bit_at_range(e_paddr, mapping_scheme[int(T::Level::Column)][0][0], mapping_scheme[int(T::Level::Column)][co_range_max][0]);
-        // cout <<"row and column range: "<< dec << s_ro << " " << e_ro <<" " << s_co << " " << e_co << endl;
-
         // xor index for channel and bank
         for (int lvl = 0; lvl < int(T::Level::MAX); lvl++){
             // cout<<spec->level_str[lvl]<<endl;
@@ -387,16 +412,17 @@ private:
     }
     bool isedge(int& row, int& column){
         if(row==-1){
-            if(column <= s_co) column = s_co;
-            if(column >= e_co) column = e_co;
-            return (column <= s_co || column >= e_co);
+            // cout << "co: " << column << endl;
+            if(column <= s_lvl[int(T::Level::Column)]) column = s_lvl[int(T::Level::Column)];
+            if(column >= e_lvl[int(T::Level::Column)]) column = e_lvl[int(T::Level::Column)];
+            return (column <= s_lvl[int(T::Level::Column)] || column >= e_lvl[int(T::Level::Column)]);
         }
         else{
-            if(row <= s_ro) row = s_ro;
-            if(row >= e_ro) row = e_ro;
-            if(column <= s_co) column = s_co;
-            if(column >= e_co) column = e_co;
-            return (row <= s_ro || row >= e_ro || column <= s_co || column >= e_co);
+            if(row <= s_lvl[int(T::Level::Row)]) row = s_lvl[int(T::Level::Row)];
+            if(row >= e_lvl[int(T::Level::Row)]) row = e_lvl[int(T::Level::Row)];
+            if(column <= s_lvl[int(T::Level::Column)]) column = s_lvl[int(T::Level::Column)];
+            if(column >= e_lvl[int(T::Level::Column)]) column = e_lvl[int(T::Level::Column)];
+            return (row <= s_lvl[int(T::Level::Row)] || row >= e_lvl[int(T::Level::Row)] || column <= s_lvl[int(T::Level::Column)] || column >= e_lvl[int(T::Level::Column)]);
         }
     }
 
@@ -417,8 +443,8 @@ private:
                     i++;
                 }
                 double rand_num = ran(gen); //multiple events tend to occur along the wordline
-                if ((rand_num >= 0.2) || ro_ref == e_ro){
-                    if(ro_ref == e_ro)
+                if ((rand_num >= 0.2) || ro_ref == e_lvl[int(T::Level::Row)]){
+                    if(ro_ref == e_lvl[int(T::Level::Row)])
                         ro_ref -= 1;
                     int dx = dist(gen) == 0 ? -1 : 1;  // left or right
                     co_ref += dx;
@@ -479,7 +505,6 @@ private:
     // }
     bool get_bit_at(uintptr_t addr, int bit)
     {
-        // cout << "get_bit_at " << bit << " ";
         return (((addr >> bit) & 1) == 1);
     }
     uintptr_t clear_lower_bits(uintptr_t addr, int bits)
