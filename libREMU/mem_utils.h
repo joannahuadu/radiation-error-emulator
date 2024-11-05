@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <string>
 #include "error_bitmap.h"
-#define SHIFTX 33
+#define SHIFTX 33 /**< LPDDR4 8GB DQ16 */  
 
 struct Vmem {
     /**
