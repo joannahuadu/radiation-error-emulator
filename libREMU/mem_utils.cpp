@@ -13,14 +13,12 @@
 #include <cstdint>
 #include <memory>
 
-
 bool Pmem::hasP(uintptr_t Paddr) const {
     return Paddr >= s_Paddr && Paddr <= t_Paddr;
 }
-bool Pmem::hasP_33(uintptr_t Paddr) const {
-    return Paddr >= s_Paddr_33 && Paddr <= t_Paddr_33;
+bool Pmem::hasP_X(uintptr_t Paddr) const {
+    return Paddr >= s_Paddr_X && Paddr <= t_Paddr_X;
 }
-
 bool Pmem::hasV(uintptr_t Vaddr) const {
     return Vaddr >= s_Vaddr && Vaddr <= t_Vaddr;
 }
@@ -31,69 +29,73 @@ Vmem Pmem::PtoV(uintptr_t Paddr) const {
         return {0, 0, 0};
     }
     uintptr_t vaddr = s_Vaddr + (Paddr - s_Paddr);
-    return {vaddr, Paddr, MemUtils::get_33_bit_pa(Paddr)};
+    return {vaddr, Paddr, MemUtils::get_addr_bit(Paddr)};
 }
-Vmem Pmem::P_33toV(uintptr_t Paddr) const {
-    if (!hasP_33(Paddr)) {
+Vmem Pmem::P_XtoV(uintptr_t Paddr) const {
+    if (!hasP_X(Paddr)) {
         std::cerr << "Physical address not in the range of this Pmem." << std::endl;
         return {0, 0, 0};
     }
-    uintptr_t vaddr = s_Vaddr + (Paddr - s_Paddr_33);
-    return {vaddr, MemUtils::get_34_bit_pa(Paddr, s_Paddr_flag_34), Paddr};
+    uintptr_t vaddr = s_Vaddr + (Paddr - s_Paddr_X);
+    return {vaddr, MemUtils::get_flag_bit(Paddr, s_Paddr_flag), Paddr};
 }
+
 Vmem Pmem::VtoP(uintptr_t Vaddr) const {
     if (!hasV(Vaddr)) {
         std::cerr << "Virtual address not in the range of this Pmem." << std::endl;
         return {0, 0, 0};
     }
     uintptr_t paddr = s_Paddr + (Vaddr - s_Vaddr);
-    return {Vaddr, paddr, MemUtils::get_33_bit_pa(paddr) };
+    return {Vaddr, paddr, MemUtils::get_addr_bit(paddr) };
 }
+
 
 std::vector<Vmem> MemUtils::get_error_Va(uintptr_t Vaddr, size_t size, std::ofstream& logfile, int error_bit_num, int flip_bit, 
 const std::string& cfg, const std::string& mapping, const std::map<int,int>& errorMap) {
     uintptr_t page_size = sysconf(_SC_PAGE_SIZE);
     std::vector<Pmem> pmems = getPmems(Vaddr, size, page_size);
-    // Open the log file for writing
     if (!logfile.is_open()) {
         std::cerr << "Failed to open log file" << std::endl;
-        // Return an empty vector since we can't log anything
         return {};
     }
     logfile << "Pmems details:" << std::endl;
     for (const auto& pmem : pmems) {
         logfile << "Start PA: " << std::hex << pmem.s_Paddr
                   << ", End PA: " << std::hex << pmem.t_Paddr
-                  << ", Start 33 PA: " << std::hex << pmem.s_Paddr_33
-                  << ", End 33 PA: " << std::hex << pmem.t_Paddr_33
-                  << ", flag 34: " << std::dec << pmem.s_Paddr_flag_34
+                  << ", Start X PA: " << std::hex << pmem.s_Paddr_X
+                  << ", End X PA: " << std::hex << pmem.t_Paddr_X
+                  << ", flag: " << std::dec << pmem.s_Paddr_flag
                   << ", Size: " << std::dec << pmem.size
                   << ", Start VA: " << std::hex << pmem.s_Vaddr
                   << ", End VA: " << std::hex << pmem.t_Vaddr
                   << ", Bias: " << std::dec << pmem.bias << std::endl;
-        break;
+        // break;
     }
-    uintptr_t min_Paddr_0=getMinPA_in_pmems(pmems, 0);//0: 1 xxxx xxxx
+    uintptr_t min_Paddr_0=getMinPA_in_pmems(pmems, 0);//0: 3 xxxx xxxx
     uintptr_t max_Paddr_0=getMaxPA_in_pmems(pmems, 0);
     logfile << "min-max: " << std::hex << min_Paddr_0 << " " << max_Paddr_0  <<std::endl;
     std::cout << "min-max: " << std::hex << min_Paddr_0 << " " << max_Paddr_0  <<std::endl;
 
 
-    uintptr_t min_Paddr_1=get_33_bit_pa(getMinPA_in_pmems(pmems,1));//1: 2 xxxx xxxx
-    uintptr_t max_Paddr_1=get_33_bit_pa(getMaxPA_in_pmems(pmems,1));
+    uintptr_t min_Paddr_1=get_addr_bit(getMinPA_in_pmems(pmems,1));//1: 4 xxxx xxxx
+    uintptr_t max_Paddr_1=get_addr_bit(getMaxPA_in_pmems(pmems,1));
     logfile << "min-max: " << std::hex << min_Paddr_1 << " " << max_Paddr_1  <<std::endl;
     std::cout << "min-max: " << std::hex << min_Paddr_1 << " " << max_Paddr_1  <<std::endl;
     float portion=(float)(max_Paddr_0-min_Paddr_0)/(float)(max_Paddr_0-min_Paddr_0+max_Paddr_1-min_Paddr_1);
-    std::cout<<" 33bit range / 33+34bit range : "<<portion<<std::endl;
+    std::cout<<" X range / all range : "<<portion<<std::endl;
     float tot_portion=(float)(size)/(float)(max_Paddr_0-min_Paddr_0+max_Paddr_1-min_Paddr_1);
-    std::cout<<" size / 33+34bit range : "<<tot_portion<<std::endl;
-    // access to the DRAM simulator
+    std::cout<<" size / all range : "<<tot_portion<<std::endl;
+    // REMU
     std::random_device rd;
     std::vector<Vmem> total_Verr;
     int getcnt=0;
     int duplicnt=0;
+    ErrorBitmap<LPDDR4> error_bitmap_0(min_Paddr_0, max_Paddr_0, page_size);
+    ErrorBitmap<LPDDR4> error_bitmap_1(min_Paddr_1, max_Paddr_1, page_size);
+    error_bitmap_0.REMU(cfg, mapping);
+    error_bitmap_1.REMU(cfg, mapping);  
     std::cout << "errors: ";
-    for (const auto& pair : errorMap) { //first error, second count
+    for (const auto& pair : errorMap) {
         int totalcnt=pair.second;
         int bitnum=pair.first;
         std::cout << std::dec <<bitnum << "-" << totalcnt << " ";
@@ -101,22 +103,12 @@ const std::string& cfg, const std::string& mapping, const std::map<int,int>& err
         int cnt1=totalcnt-cnt0;
         for(int i=0;i<cnt0;i++){
             while(true){
+                assert(getcnt <= 50000000 && "Time Out!");
                 int seed = rd();
-                ErrorBitmap error_bitmap(min_Paddr_0, max_Paddr_0, page_size, bitnum, seed);
-                std::vector<uintptr_t> errors = error_bitmap.REMU(cfg, mapping);    
-                // logfile<<std::dec <<getcnt<<"th REMU : ";
-                // std::cout<<std::dec <<getcnt<<"th REMU: ";
-                // for(auto kk:errors){
-                //     logfile<<std::hex<<kk<<" ";
-                //     std::cout<<std::hex<<kk<<" ";
-                // }
+                std::vector<uintptr_t> errors = error_bitmap_0.calculateError(bitnum, seed);    
 
                 std::vector<Vmem> Verr;
-                Verr=getValidVA_in_pa33s(errors, pmems);  
-
-                // logfile<<"\n "<<std::dec <<Verr.size()<<" valid in "<<std::dec <<errors.size()<<"\n";
-                // std::cout<<"\n "<<std::dec <<Verr.size()<<" valid in "<<std::dec <<errors.size()<<"\n";
-
+                Verr=getValidVA_in_pa(errors, pmems);  
 
                 if(Verr.size()==errors.size()){
                     bool isDuplicate = false;
@@ -132,13 +124,8 @@ const std::string& cfg, const std::string& mapping, const std::map<int,int>& err
                     }
                     if (!isDuplicate) {
                         total_Verr.insert(total_Verr.end(), Verr.begin(), Verr.end());
-                        // logfile << std::dec << getcnt << "th 33bit creation succeed: "
-                        //         << "get " << std::dec << Verr.size() << " targets in " << std::dec << errors.size() << " PAs" << std::endl;
-                        // std::cout << std::dec << getcnt << "th 33bit creation succeed: "
-                        //         << "get " << std::dec << Verr.size() << " targets in " << std::dec << errors.size() << " PAs" << std::endl;
                         break;
                     }else duplicnt++;
-                    // break;
                 }else{
                     getcnt++;
                 }     
@@ -146,21 +133,12 @@ const std::string& cfg, const std::string& mapping, const std::map<int,int>& err
         }
         for(int i=0;i<cnt1;i++){
             while(true){
+                assert(getcnt <= 50000000 && "Time Out!");
                 int seed = rd();
-                ErrorBitmap error_bitmap(min_Paddr_1, max_Paddr_1, page_size, bitnum, seed);
-                std::vector<uintptr_t> errors = error_bitmap.REMU(cfg, mapping);    
-                // logfile<<std::dec <<getcnt<<"th REMU : ";
-                // std::cout<<std::dec <<getcnt<<"th REMU: ";
-                // for(auto kk:errors){
-                //     logfile<<std::hex<<kk<<" ";
-                //     std::cout<<std::hex<<kk<<" ";
-                // }
+                std::vector<uintptr_t> errors = error_bitmap_1.calculateError(bitnum, seed);
 
                 std::vector<Vmem> Verr;
-                Verr=getValidVA_in_pa34s(errors, pmems);    
-
-                // logfile<<"\n "<<std::dec <<Verr.size()<<" valid in "<<std::dec <<errors.size()<<"\n";
-                // std::cout<<"\n "<<std::dec <<Verr.size()<<" valid in "<<std::dec <<errors.size()<<"\n";
+                Verr=getValidVA_in_pa(errors, pmems);    
 
                 if(Verr.size()==errors.size()){
                     bool isDuplicate = false;
@@ -176,11 +154,8 @@ const std::string& cfg, const std::string& mapping, const std::map<int,int>& err
                     }
                     if (!isDuplicate) {
                         total_Verr.insert(total_Verr.end(), Verr.begin(), Verr.end());
-                        // std::cout << std::dec << getcnt << "th 34bit creation succeed: "
-                        //         << "get " << std::dec << Verr.size() << " targets in " << std::dec << errors.size() << " PAs" << std::endl;
                         break;
                     }else duplicnt++;
-                    // break;
                 }else{
                     getcnt++;
                 }     
@@ -190,21 +165,16 @@ const std::string& cfg, const std::string& mapping, const std::map<int,int>& err
     std::cout << std::dec << getcnt <<" tried, "<<std::dec <<duplicnt<<" duplicated, "<<std::dec << total_Verr.size() << " valid\n";
 
     for(const auto& vmem: total_Verr){
-        logfile << "Error PA: " << std::hex << vmem.paddr_33<< ", mapVA: " <<std::hex << vmem.vaddr << std::endl;
-        break;
-        // std::cout << "Error PA: " << std::hex << vmem.paddr_33<< ", mapVA: " <<std::hex << vmem.vaddr << std::endl;
-        // dumpUnknownVA(vmem.vaddr, 16);
+        logfile << "Error PA: " << std::hex << vmem.paddr_X << ", mapVA: " <<std::hex << vmem.vaddr << std::endl;
+        // break;
     } 
-
-
-    // flipping the bits
     // logfile << "\n InjectFault details: "<<std::endl;
     for(auto vmem : total_Verr){
         unsigned char* byteAddress = reinterpret_cast<unsigned char*>(vmem.vaddr);
-        // std::bitset<8> bitsBefore(*byteAddress);
-        *byteAddress ^= 1 << flip_bit; 
-        // std::bitset<8> bitsAfter(*byteAddress); 
-        // logfile << bitsBefore << " -> " << bitsAfter << std::endl; // Print the binary representation
+        std::bitset<8> bitsBefore(*byteAddress);
+        *byteAddress ^= 1 << flip_bit;
+        std::bitset<8> bitsAfter(*byteAddress); 
+        logfile << bitsBefore << " -> " << bitsAfter << std::endl; // Print the binary representation
     }
     // std::cout << std::endl;
     return total_Verr;
@@ -228,7 +198,6 @@ std::vector<uintptr_t> MemUtils::get_random_error_Va(uintptr_t Vaddr, size_t siz
         break;
         // std::cout << "Error VA: " <<std::hex << vmem << std::endl;
     } 
-    // flipping the bits
     for(auto vmem : total_Verr){
         unsigned char* byteAddress = reinterpret_cast<unsigned char*>(vmem);
         // std::bitset<8> bitsBefore(*byteAddress);
@@ -271,9 +240,9 @@ std::vector<Pmem> MemUtils::getPmems(uintptr_t Vaddr, size_t size, uintptr_t pag
         }
         if ((entry & (1ULL << 63)) == 0) { std::cerr<< "Page not present in memory." << std::endl;}
         pfn = entry & ((1ULL << 55) - 1);
+        assert((1<<12) == page_size);
         currentPaddr = (pfn << 12) | (currentVaddr & (page_size - 1));
 
-        // Check whether it is a new physical block, merge the continuous pages into a block
         if (firstPmem || currentPmem.t_Paddr + 1 != currentPaddr) {
             if (!firstPmem) {
                 pmems.push_back(currentPmem);
@@ -284,7 +253,6 @@ std::vector<Pmem> MemUtils::getPmems(uintptr_t Vaddr, size_t size, uintptr_t pag
             firstPmem = false;
         }
 
-        // Update the physical block
         currentPmem.t_Paddr = currentPaddr + page_size - 1;
         currentPmem.t_Vaddr = currentVaddr + page_size - 1;
         currentPmem.size = currentPmem.t_Vaddr - currentPmem.s_Vaddr + 1;
@@ -297,7 +265,6 @@ std::vector<Pmem> MemUtils::getPmems(uintptr_t Vaddr, size_t size, uintptr_t pag
             currentPmem.t_Paddr = currentPaddr + lastPageOffset - 1;
         }
 
-        // Move to the next virtual page
         if (currentVaddr == Vaddr && firstPageOffset != 0) {
             currentVaddr += (page_size - firstPageOffset);
         } else {
@@ -310,64 +277,49 @@ std::vector<Pmem> MemUtils::getPmems(uintptr_t Vaddr, size_t size, uintptr_t pag
     }
 
     for(auto& pmem: pmems){
-        pmem.s_Paddr_33=MemUtils::get_33_bit_pa(pmem.s_Paddr);
-        pmem.s_Paddr_flag_34=MemUtils::get_34_bit_flag(pmem.s_Paddr);
-        pmem.t_Paddr_33=MemUtils::get_33_bit_pa(pmem.t_Paddr);
-        pmem.t_Paddr_flag_34=MemUtils::get_34_bit_flag(pmem.t_Paddr);
+        pmem.s_Paddr_X=MemUtils::get_addr_bit(pmem.s_Paddr);
+        pmem.s_Paddr_flag=MemUtils::get_flag(pmem.s_Paddr);
+        pmem.t_Paddr_X=MemUtils::get_addr_bit(pmem.t_Paddr);
+        pmem.t_Paddr_flag=MemUtils::get_flag(pmem.t_Paddr);
     }
 
     return pmems;
 }
 
-//
-uintptr_t MemUtils::get_33_bit_pa(uintptr_t Paddr){
-    return Paddr & ((1ULL << 33) - 1);
+uintptr_t MemUtils::get_addr_bit(uintptr_t Paddr){
+    return Paddr & ((1ULL << SHIFTX) - 1);
 }
-int MemUtils::get_34_bit_flag(uintptr_t Paddr){
-    return (Paddr >> 33);
+int MemUtils::get_flag(uintptr_t Paddr){
+    return (Paddr >> SHIFTX);
 }
-uintptr_t MemUtils::get_34_bit_pa(uintptr_t Paddr, int flag){
+uintptr_t MemUtils::get_flag_bit(uintptr_t Paddr, int flag){
     // if(flag!=0 && flag!=1){
     //     std::cerr << "Error: Bit must be 0 or 1" << std::endl;
     //     return 0;
     // }
-    Paddr &= ((1ULL << 33) - 1);
-    return Paddr | (static_cast<uintptr_t>(flag) << 33);
+    Paddr &= ((1ULL << SHIFTX) - 1);
+    return Paddr | (static_cast<uintptr_t>(flag) << SHIFTX);
 }
 
-uintptr_t MemUtils::getMinPA_33_in_pmems(const std::vector<Pmem>& pmems) {
+uintptr_t MemUtils::getMinPA_in_pmems(const std::vector<Pmem>& pmems, int flag) {
     uintptr_t minAddr = std::numeric_limits<uintptr_t>::max();
-    for (const auto& pmem : pmems) {
-        if (pmem.s_Paddr_33 < minAddr) {
-            minAddr = pmem.s_Paddr_33;
-        }
-    }
-    return minAddr == std::numeric_limits<uintptr_t>::max() ? 0 : minAddr; 
-}
-uintptr_t MemUtils::getMinPA_in_pmems(const std::vector<Pmem>& pmems, int flag_34) {
-    uintptr_t minAddr = std::numeric_limits<uintptr_t>::max();
-    for (const auto& pmem : pmems)if(pmem.s_Paddr_flag_34==flag_34) {
-        if (pmem.s_Paddr < minAddr) {
-            minAddr = pmem.s_Paddr;
+    for (const auto& pmem : pmems){
+        if(pmem.s_Paddr_flag==flag) {
+            if (pmem.s_Paddr < minAddr) {
+                minAddr = pmem.s_Paddr;
+            }
         }
     }
     return minAddr == std::numeric_limits<uintptr_t>::max() ? 0 : minAddr; 
 }
 
-uintptr_t MemUtils::getMaxPA_33_in_pmems(const std::vector<Pmem>& pmems) {
+uintptr_t MemUtils::getMaxPA_in_pmems(const std::vector<Pmem>& pmems, int flag) {
     uintptr_t maxAddr = 0; 
-    for (const auto& pmem : pmems) {
-        if (pmem.t_Paddr_33 > maxAddr) {
-            maxAddr = pmem.t_Paddr_33;
-        }
-    }
-    return maxAddr;
-}
-uintptr_t MemUtils::getMaxPA_in_pmems(const std::vector<Pmem>& pmems, int flag_34) {
-    uintptr_t maxAddr = 0; 
-    for (const auto& pmem : pmems) if(pmem.t_Paddr_flag_34==flag_34){
-        if (pmem.t_Paddr > maxAddr) {
-            maxAddr = pmem.t_Paddr;
+    for (const auto& pmem : pmems){
+        if(pmem.t_Paddr_flag==flag){
+            if (pmem.t_Paddr > maxAddr) {
+                maxAddr = pmem.t_Paddr;
+            }
         }
     }
     return maxAddr;
@@ -379,21 +331,19 @@ Pmem MemUtils::get_block_in_pmems(uintptr_t Vaddr, size_t size, size_t bias) {
     for (const auto& pmem : pmems)if(pmem.hasV(Vaddr+bias))return pmem;
 }
 
-
 bool MemUtils::check_pa_in_pmems(uintptr_t Paddr, const std::vector<Pmem>& pmems) {
     for (const auto& pmem : pmems)if(pmem.hasP(Paddr))return true;
     return false; 
 }
 
-
-std::vector<Vmem> MemUtils::getValidVA_in_pa33s(const std::vector<uintptr_t>& paddrs, const std::vector<Pmem>& pmems){
+std::vector<Vmem> MemUtils::getValidVA_in_pa(const std::vector<uintptr_t>& paddrs, const std::vector<Pmem>& pmems){
     std::vector<Vmem> vmems;
     for (uintptr_t paddr : paddrs) { 
         // std::cout << "error: " <<std::hex<< paddr << " ";
         for (const auto& pmem : pmems) {
-            if (pmem.hasP_33(paddr)) { 
+            if (pmem.hasP_X(paddr)) { 
                 // std::cout << "here!!" << std::endl;
-                Vmem vmem = pmem.P_33toV(paddr); 
+                Vmem vmem = pmem.P_XtoV(paddr); 
                 if (vmem.vaddr != 0) { 
                     vmems.push_back(vmem); 
                 }
@@ -402,67 +352,4 @@ std::vector<Vmem> MemUtils::getValidVA_in_pa33s(const std::vector<uintptr_t>& pa
         }
     }
     return vmems; 
-}
-
-std::vector<Vmem> MemUtils::getValidVA_in_pa34s(const std::vector<uintptr_t>& paddrs, const std::vector<Pmem>& pmems){
-    std::vector<Vmem> vmems;
-    for (uintptr_t paddr : paddrs) { 
-        // std::cout << "error: " <<std::hex<< paddr << " ";
-        for (const auto& pmem : pmems) {
-            if (pmem.hasP_33(paddr)&&pmem.s_Paddr_flag_34) { 
-                // std::cout << "here!!" << std::endl;
-                Vmem vmem = pmem.P_33toV(paddr); 
-                if (vmem.vaddr != 0) { 
-                    vmems.push_back(vmem); 
-                }
-                break; 
-            }
-        }
-    }
-    return vmems; 
-}
-
-void MemUtils::dumpUnknownVA(const uintptr_t Vaddr,size_t size){
-    std::cout << "Interpreting address " << std::hex << Vaddr << " as different types:" << std::endl;
-    
-    size_t aligns[] = {1, 2, 4, 8};
-
-    for (size_t align : aligns) {
-        std::cout << "Alignment: " << align << std::endl;
-        for (size_t offset = 0; offset < size; offset += align) {
-            uintptr_t addr = Vaddr + offset;
-            std::cout << "Offset: " << offset << std::endl;
-
-            if (align >= alignof(int8_t)) {
-                const int8_t* srcPtr = reinterpret_cast<const int8_t*>(addr);
-                int convertedValue = static_cast<int>(*srcPtr);
-                std::cout << "As int8(static_cast(int)): " << convertedValue << std::endl;
-                std::vector<int> dstVec(1);
-                std::transform(srcPtr, srcPtr + 1, dstVec.begin(), [](int8_t in) { return static_cast<int>(in); });
-
-                std::cout << "As int8(transform(1)): " << dstVec[0] << std::endl;
-            }
-            if (align >= alignof(int16_t)) {
-                std::cout << "As int16: " << *(reinterpret_cast<const int16_t*>(addr)) << std::endl;
-            }
-            if (align >= alignof(int32_t)) {
-                std::cout << "As int32: " << *(reinterpret_cast<const int32_t*>(addr)) << std::endl;
-            }
-            if (align >= alignof(int64_t)) {
-                std::cout << "As int64: " << *(reinterpret_cast<const int64_t*>(addr)) << std::endl;
-            }
-
-            if (align >= alignof(float)) {
-                std::cout << "As float32 (fp32): " << *(reinterpret_cast<const float*>(addr)) << std::endl;
-            }
-            if (align >= alignof(double)) {
-                std::cout << "As float64 (fp64): " << *(reinterpret_cast<const double*>(addr)) << std::endl;
-            }
-
-            if (align >= alignof(char)) {
-                std::cout << "As char: " << *(reinterpret_cast<const char*>(addr)) << std::endl;
-            }
-
-        }
-    }
 }
