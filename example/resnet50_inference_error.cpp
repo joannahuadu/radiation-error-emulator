@@ -255,7 +255,7 @@ int main(int argc, char** argv)
 
 
     for (size_t j = 0; j < image_files.size(); j++){
-        if(j==500) break; 
+        if(j==100) break; 
         // std::cout << j << " " << image_files[j] << std::endl;
         cv::Mat img = cv::imread(image_files[j]);
         if (img.empty()) continue;
@@ -276,7 +276,7 @@ int main(int argc, char** argv)
     std::cout<<"Inference done\n";
     // auto end = std::chrono::system_clock::now();
     // std::cout << "total time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-    double accuracy = static_cast<double>(correct) / 500;
+    double accuracy = static_cast<double>(correct) / 100;
     logfile << "Bitflip: " << std::dec << bitflip << ". Accuracy: " << accuracy << std::endl;
     std::cout << "Bitflip: " << std::dec << bitflip << ". Accuracy: " << accuracy << std::endl;
     // Destroy the engine
