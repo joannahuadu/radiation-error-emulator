@@ -1,4 +1,4 @@
-# radiation-error-emulator (REMUv1.0)
+# Radiation-error-emulator (REMUv1.0)
 
 To further quantify radiation-caused SEUs/MCUs' impacts on diverse in-orbit applications at scale, a flexible and reconfigurable hardware-in-the-loop space radiation emulator is desirable to facilitate both the exploration of applications’ error behaviors and the availability of application-aware tolerant design.
 
