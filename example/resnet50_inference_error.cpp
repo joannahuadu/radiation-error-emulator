@@ -243,6 +243,7 @@ int main(int argc, char** argv)
     // change your path
     std::string cfg = "../../libREMU/configs/LPDDR4-config.cfg";
     std::string mapping = "../../libREMU/mappings/LPDDR4_row_interleaving_16.map";
+    std::string tree_mapping = "../../utils/pa2da/configs/lpddr5_jetson_agx_orin.yaml";
     std::string error_file = "../../example/error_counts_"+std::to_string(bitflip) + ".txt";
    
     std::cout << "mapping: " << mapping << std::endl;
@@ -265,15 +266,16 @@ int main(int argc, char** argv)
 
 
     uintptr_t Vaddr = reinterpret_cast<uintptr_t>(trtModelStream);
-    std::cout << "vaddr: "  << std::hex << Vaddr <<"-"<<std::dec <<size << std::endl;
+    std::cout << "vaddr: "  << std::hex << Vaddr <<"-"<<std::dec <<size <<" bias: "<<std::dec<<bias<< std::endl;
     // if lineidx == 0, do DNN inference without any error.
     if(lineidx){
         std::map<int, int> errorMap = loadErrors(error_file, lineidx); 
         size_t dram_capacity_gb=64;
         MemUtils memUtils(dram_capacity_gb);
-        Pmem block =  MemUtils::get_block_in_pmems(&memUtils, Vaddr, size, bias);
-        std::cout << "block_vaddr: " << std::hex << block.s_Vaddr << "-" << std::dec << block.size << std::endl;
-        MemUtils::get_error_Va(&memUtils, block.s_Vaddr, block.size, logfile, bitflip, bitidx, cfg, mapping, errorMap);
+        // Pmem block =  MemUtils::get_block_in_pmems(&memUtils, Vaddr, size, bias);
+        // std::cout << "block_vaddr: " << std::hex << block.s_Vaddr << "-" << std::dec << block.size << std::endl;
+        // MemUtils::get_error_Va(&memUtils, block.s_Vaddr, block.size, logfile, bitflip, bitidx, cfg, mapping, errorMap);
+        MemUtils::get_error_Va_tree(&memUtils, Vaddr+bias, size-bias, logfile, bitflip, bitidx, tree_mapping, errorMap);
     }
     
 

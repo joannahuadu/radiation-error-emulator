@@ -14,8 +14,15 @@ set(SOURCES
     ./src/Memory.h
     error_bitmap.h
     error_bitmap.cpp
+    bitmap_tree.h 
+    bitmap_tree.cpp
     mem_utils.h
     mem_utils.cpp
 )
 
+find_package(yaml-cpp REQUIRED)
+include_directories(${YAML_CPP_INCLUDE_DIR})
+
 add_library(REMU_mem SHARED ${SOURCES})
+
+target_link_libraries(REMU_mem yaml-cpp)

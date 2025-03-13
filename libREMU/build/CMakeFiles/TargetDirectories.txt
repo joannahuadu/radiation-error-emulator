@@ -1,0 +1,3 @@
+/data/workplace/xln/radiation-error-emulator/libREMU/build/CMakeFiles/REMU_mem.dir
+/data/workplace/xln/radiation-error-emulator/libREMU/build/CMakeFiles/edit_cache.dir
+/data/workplace/xln/radiation-error-emulator/libREMU/build/CMakeFiles/rebuild_cache.dir
