@@ -69,46 +69,90 @@ void doInference(IExecutionContext& context, float* input, float* output, int* o
 {
     const ICudaEngine& engine = context.getEngine();
 
-    // Pointers to input and output device buffers to pass to engine.
-    // Engine requires exactly IEngine::getNbBindings() number of buffers.
-    assert(engine.getNbBindings() == 3);
-    void* buffers[3];
+    CHECK(engine.getNbIOTensors()!=3);
+    // std::cout << "Number of I/O tensors: " << nbTensors << std::endl;
+    
+    // // Get tensor names and print their info
+    // for (int i = 0; i < nbTensors; i++) {
+    //     const char* tensorName = engine.getIOTensorName(i);
+    //     TensorIOMode mode = engine.getTensorIOMode(tensorName);
+    //     std::cout << "Tensor " << i << ": " << tensorName << " (Mode: " << (mode == TensorIOMode::kINPUT ? "Input" : "Output") << ")" << std::endl;
+    // }
 
-    // In order to bind the buffers, we need to know the names of the input and output tensors.
-    // Note that indices are guaranteed to be less than IEngine::getNbBindings()
-    const int inputIndex = engine.getBindingIndex(INPUT_BLOB_NAME);
-    const int outputIndex = engine.getBindingIndex(OUTPUT_BLOB_NAME);
-    const int indexIndex = engine.getBindingIndex(OUTPUT_BLOB_NAME_INDEX);
+    // Get tensor names
+    const char* inputName = INPUT_BLOB_NAME;
+    // const char* softmaxName = "softmax_output";  // New tensor for debugging
+    const char* outputName = OUTPUT_BLOB_NAME;
+    const char* outputIndexName = OUTPUT_BLOB_NAME_INDEX;
+
+    // Check if tensors exist and are inputs/outputs
+    assert(engine.getTensorIOMode(inputName) == TensorIOMode::kINPUT);
+    assert(engine.getTensorIOMode(outputName) == TensorIOMode::kOUTPUT);
+    assert(engine.getTensorIOMode(outputIndexName) == TensorIOMode::kOUTPUT);
+
+    // Get tensor shapes
+    Dims inputDims = engine.getTensorShape(inputName);
+    Dims outputDims = engine.getTensorShape(outputName);
+    Dims outputIdxDims = engine.getTensorShape(outputIndexName);
 
     // Create GPU buffers on device
-    CHECK(cudaMalloc(&buffers[inputIndex], batchSize * 3 * INPUT_H * INPUT_W * sizeof(float)));
-    CHECK(cudaMalloc(&buffers[outputIndex], batchSize * sizeof(float)));
-    CHECK(cudaMalloc(&buffers[indexIndex], batchSize * sizeof(int32_t)));
+    void* inputBuffer;
+    void* outputBuffer;
+    void* outputIndexBuffer;
+    // void* softmaxBuffer;
+    
+    CHECK(cudaMalloc(&inputBuffer, batchSize * 3 * INPUT_H * INPUT_W * sizeof(float)));
+    CHECK(cudaMalloc(&outputBuffer, batchSize * sizeof(float)));
+    CHECK(cudaMalloc(&outputIndexBuffer, batchSize * sizeof(int32_t)));
+    // CHECK(cudaMalloc(&softmaxBuffer, batchSize * OUTPUT_SIZE * sizeof(float)));
+
+    // Set tensor addresses (this is the new way in TensorRT 10.3)
+    context.setTensorAddress(inputName, inputBuffer);
+    context.setTensorAddress(outputName, outputBuffer);
+    context.setTensorAddress(outputIndexName, outputIndexBuffer);
+    // context.setTensorAddress(softmaxName, softmaxBuffer);
 
     // Create stream
     cudaStream_t stream;
     CHECK(cudaStreamCreate(&stream));
+
+    // Copy input data to device
+    CHECK(cudaMemcpyAsync(inputBuffer, input, batchSize * 3 * INPUT_H * INPUT_W * sizeof(float), cudaMemcpyHostToDevice, stream));
     
-    // cudaEvent_t start, stop;
-    // cudaEventCreate(&start);
-    // cudaEventCreate(&stop);
-    // cudaEventRecord(start); 
-    CHECK(cudaMemcpyAsync(buffers[inputIndex], input, batchSize * 3 * INPUT_H * INPUT_W * sizeof(float), cudaMemcpyHostToDevice, stream));
-    context.enqueue(batchSize, buffers, stream, nullptr);
-    CHECK(cudaMemcpyAsync(output, buffers[outputIndex], batchSize * sizeof(float), cudaMemcpyDeviceToHost, stream));
-    CHECK(cudaMemcpyAsync(output_index, buffers[indexIndex], batchSize * sizeof(int32_t), cudaMemcpyDeviceToHost, stream));
-    // cudaEventRecord(stop);
-    // cudaEventSynchronize(stop);
-    // float milliseconds = 0;
-    // cudaEventElapsedTime(&milliseconds, start, stop);
-    // std::cout << milliseconds<< "ms" << std::endl;
+    // Execute inference with the new API (no need to pass bindings)
+    bool status = context.enqueueV3(stream);
+    if (!status) {
+        std::cerr << "Error during inference execution" << std::endl;
+    }
+    
+    // Copy output back to host
+    CHECK(cudaMemcpyAsync(output, outputBuffer, batchSize * sizeof(float), cudaMemcpyDeviceToHost, stream));
+    CHECK(cudaMemcpyAsync(output_index, outputIndexBuffer, batchSize * sizeof(int32_t), cudaMemcpyDeviceToHost, stream));
+    
+    // // After inference, copy softmax outputs
+    // float softmaxOutput[OUTPUT_SIZE];
+    // CHECK(cudaMemcpyAsync(softmaxOutput, softmaxBuffer, 
+    //                      batchSize * OUTPUT_SIZE * sizeof(float), 
+    //                      cudaMemcpyDeviceToHost, stream));
+    
     cudaStreamSynchronize(stream);
 
+    // std::cout << "=== Output Values ===" << std::endl;
+    // std::cout << "Probability: " << output[0] << std::endl;
+    // std::cout << "Class Index: " << output_index[0] << std::endl;
+    
+    // // Print all class probabilities
+    // std::cout << "Class probabilities:" << std::endl;
+    // for (int i = 0; i < OUTPUT_SIZE; i++) {
+    //     std::cout << "Class " << i << ": " << softmaxOutput[i] << std::endl;
+    // }
+    
     // Release stream and buffers
     cudaStreamDestroy(stream);
-    CHECK(cudaFree(buffers[inputIndex]));
-    CHECK(cudaFree(buffers[outputIndex]));
-    CHECK(cudaFree(buffers[indexIndex]));
+    CHECK(cudaFree(inputBuffer));
+    CHECK(cudaFree(outputBuffer));
+    CHECK(cudaFree(outputIndexBuffer));
+    // CHECK(cudaFree(softmaxBuffer));
 }
 
 void readImageInfo(const std::string& filePath, std::vector<std::string>& paths, std::vector<int>& labels) {
@@ -188,6 +232,7 @@ int main(int argc, char** argv)
     }
 
     std::string logFileName = "block_" + engine_name + "_" +std::to_string(bitflip)+"_" + std::to_string(bitidx) +  "_" + std::to_string(bias) + "_" + std::to_string(time) + ".txt";
+    std::cout << "logfile path is " << logFileName << std::endl;
     std::ofstream logfile(logFileName);
     if (!logfile.is_open()) {
         std::cerr << "Failed to open log file" << std::endl;
@@ -196,9 +241,9 @@ int main(int argc, char** argv)
     }
 
     // change your path
-    std::string cfg = "/path/libREMU/configs/LPDDR4-config.cfg";
-    std::string mapping = "/path/libREMU/mappings/LPDDR4_row_interleaving_16.map";
-    std::string error_file = "/path/example/error_counts_"+std::to_string(bitflip) + ".txt";
+    std::string cfg = "/data/workplace/xln/radiation-error-emulator/libREMU/configs/LPDDR4-config.cfg";
+    std::string mapping = "/data/workplace/xln/radiation-error-emulator/libREMU/mappings/LPDDR4_row_interleaving_16.map";
+    std::string error_file = "/data/workplace/xln/radiation-error-emulator/example/error_counts_"+std::to_string(bitflip) + ".txt";
     std::cout << "mapping: " << mapping << std::endl;
 
     char *trtModelStream{nullptr};
@@ -223,14 +268,15 @@ int main(int argc, char** argv)
     // if lineidx == 0, do DNN inference without any error.
     if(lineidx){
         std::map<int, int> errorMap = loadErrors(error_file, lineidx); 
-        MemUtils memUtils;
-        Pmem block =  memUtils.get_block_in_pmems(Vaddr, size, bias);
+        size_t dram_capacity_gb=64;
+        MemUtils memUtils(dram_capacity_gb);
+        Pmem block =  MemUtils::get_block_in_pmems(&memUtils, Vaddr, size, bias);
         std::cout << "block_vaddr: " << std::hex << block.s_Vaddr << "-" << std::dec << block.size << std::endl;
-        memUtils.get_error_Va(block.s_Vaddr, block.size, logfile, bitflip, bitidx, cfg, mapping, errorMap);
+        MemUtils::get_error_Va(&memUtils, block.s_Vaddr, block.size, logfile, bitflip, bitidx, cfg, mapping, errorMap);
     }
     
 
-    ICudaEngine* engine = runtime->deserializeCudaEngine(trtModelStream, size, nullptr);
+    ICudaEngine* engine = runtime->deserializeCudaEngine(trtModelStream, size);
     assert(engine != nullptr);
 
     std::cout<<"Engine deserialized\n";
@@ -267,6 +313,11 @@ int main(int argc, char** argv)
             data[i + 2 * INPUT_H * INPUT_W] = pr_img.at<cv::Vec3f>(i)[0];
         }
 
+        // Print some values from the preprocessed image
+        // std::cout << "Preprocessed values: " 
+        //           << data[0] << ", " << data[INPUT_H * INPUT_W] << ", " << data[2 * INPUT_H * INPUT_W] 
+        //           << std::endl;
+
         doInference(*context, data, prob, idx, 1);
         // std::cout <<" "<<image_targets[j]<<"-"<<idx[0]<< " " << classes[idx[0]] << " " << prob[0] << std::endl;
         if (image_targets[j] == idx[0]) correct++;
@@ -280,8 +331,8 @@ int main(int argc, char** argv)
     logfile << "Bitflip: " << std::dec << bitflip << ". Accuracy: " << accuracy << std::endl;
     std::cout << "Bitflip: " << std::dec << bitflip << ". Accuracy: " << accuracy << std::endl;
     // Destroy the engine
-    context->destroy();
-    engine->destroy();
-    runtime->destroy();
+    delete context;
+    delete engine;
+    delete runtime;
     return 0;
 }

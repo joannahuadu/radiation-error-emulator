@@ -1,0 +1,29 @@
+dram:
+  type: LPDDR4
+  # Set explicit hardware capacity for Jetson NX (16GB)
+  hardware_capacity: 17179869184  # 16GB in bytes
+  hierarchy:
+    channel_bits: 1       # 2 channels (typical for mobile)
+    rank_bits: 0          # 1 rank
+    bankgroup_bits: 0     # No bankgroups in LPDDR4
+    bank_bits: 3          # 8 banks (BA0-BA2)
+    row_bits: 16          # R0-R15
+    column_bits: 10       # C0-C9
+  interface:
+    bus_width: 16         # x16 organization per die
+    prefetch_size: 16     # 16n prefetch for LPDDR4
+  extensions:
+    row_xor_interleaving: false
+
+mapping:
+  scheme: "CUSTOM"
+  bit_mapping:
+    # Format: component: [list of physical address bits]
+    column: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]  # C0-C9 (though C0-C1 are implicit)
+    row: [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]  # R0-R15
+    channel: [10]
+    # For banks, we specify XOR relationships
+    bank:
+      - xor: [5, 11]  # Bank bit 0 = XOR of bits 5 and 11
+      - xor: [6, 12]  # Bank bit 1 = XOR of bits 6 and 12
+      - xor: [7, 13]  # Bank bit 2 = XOR of bits 7 and 13

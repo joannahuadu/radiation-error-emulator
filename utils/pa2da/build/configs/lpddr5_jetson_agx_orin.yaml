@@ -1,0 +1,26 @@
+dram:
+  type: LPDDR5
+  hardware_capacity: 68719476736  # 64GB in bytes
+  hierarchy:
+    channel_bits: 1
+    rank_bits: 1
+    bankgroup_bits: 4
+    bank_bits: 4
+    row_bits: 17
+    column_bits: 10
+  interface:
+    bus_width: 16
+    prefetch_size: 16
+  extensions:
+    row_xor_interleaving: false
+
+mapping:
+  scheme: "CUSTOM"
+  bit_mapping:
+    # All direct mapping (no XOR)
+    column: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    channel: [10]
+    rank: [11]
+    bankgroup: [12, 13, 14, 15]
+    bank: [16, 17, 18, 19]
+    row: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35]
