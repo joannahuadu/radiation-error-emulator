@@ -241,9 +241,10 @@ int main(int argc, char** argv)
     }
 
     // change your path
-    std::string cfg = "/data/workplace/xln/radiation-error-emulator/libREMU/configs/LPDDR4-config.cfg";
-    std::string mapping = "/data/workplace/xln/radiation-error-emulator/libREMU/mappings/LPDDR4_row_interleaving_16.map";
-    std::string error_file = "/data/workplace/xln/radiation-error-emulator/example/error_counts_"+std::to_string(bitflip) + ".txt";
+    std::string cfg = "../../libREMU/configs/LPDDR4-config.cfg";
+    std::string mapping = "../../libREMU/mappings/LPDDR4_row_interleaving_16.map";
+    std::string error_file = "../../example/error_counts_"+std::to_string(bitflip) + ".txt";
+   
     std::cout << "mapping: " << mapping << std::endl;
 
     char *trtModelStream{nullptr};
