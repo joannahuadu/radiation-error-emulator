@@ -232,6 +232,7 @@ int main(int argc, char** argv)
     }
 
     std::string logFileName = "block_" + engine_name + "_" +std::to_string(bitflip)+"_" + std::to_string(bitidx) +  "_" + std::to_string(bias) + "_" + std::to_string(time) + ".txt";
+    std::cout << "logfile path is " << logFileName << std::endl;
     std::ofstream logfile(logFileName);
     if (!logfile.is_open()) {
         std::cerr << "Failed to open log file" << std::endl;
@@ -267,10 +268,11 @@ int main(int argc, char** argv)
     // if lineidx == 0, do DNN inference without any error.
     if(lineidx){
         std::map<int, int> errorMap = loadErrors(error_file, lineidx); 
-        MemUtils memUtils;
-        Pmem block =  memUtils.get_block_in_pmems(Vaddr, size, bias);
+        size_t dram_capacity_gb=64;
+        MemUtils memUtils(dram_capacity_gb);
+        Pmem block =  MemUtils::get_block_in_pmems(&memUtils, Vaddr, size, bias);
         std::cout << "block_vaddr: " << std::hex << block.s_Vaddr << "-" << std::dec << block.size << std::endl;
-        memUtils.get_error_Va(block.s_Vaddr, block.size, logfile, bitflip, bitidx, cfg, mapping, errorMap);
+        MemUtils::get_error_Va(&memUtils, block.s_Vaddr, block.size, logfile, bitflip, bitidx, cfg, mapping, errorMap);
     }
     
 
