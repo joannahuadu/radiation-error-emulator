@@ -4,7 +4,9 @@
 #include <vector>
 #include <cstdint>
 #include <string>
-#include "error_bitmap.h"
+#include <map>
+#include <cassert>
+
 
 struct Vmem {
     uintptr_t vaddr; /**< The virtual address. */  
@@ -68,7 +70,7 @@ public:
     uintptr_t P2D(uintptr_t pa, size_t &base);
     uintptr_t D2P(uintptr_t da);
 
-    static std::vector<Vmem> get_error_Va(MemUtils* self, uintptr_t Vaddr, size_t size, std::ofstream& logfile, int error_bit_num, int flip_bit, const std::string& cfg, const std::string& mapping, const std::map<int,int>& errorMap);
+    // static std::vector<Vmem> get_error_Va(MemUtils* self, uintptr_t Vaddr, size_t size, std::ofstream& logfile, int error_bit_num, int flip_bit, const std::string& cfg, const std::string& mapping, const std::map<int,int>& errorMap);
     static std::vector<Vmem> get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, size_t size, std::ofstream& logfile, int error_bit_num, int flip_bit, const std::string& mapping, const std::map<int,int>& errorMap);
 
     static std::vector<uintptr_t> get_random_error_Va(uintptr_t Vaddr, size_t size, std::ofstream& logfile, int error_bit_num, int flip_bit);
