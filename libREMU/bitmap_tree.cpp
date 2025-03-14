@@ -335,11 +335,9 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
                 
                 ColumnNode &colNode = bankNode.columns[selected_col];
                 int selected_row = -1;
-                if (remaining == 0) {
-                    selected_row = colNode.row_bitmap._Find_first();
-                } else {
-                    selected_row = colNode.row_bitmap._Find_next(remaining - 1);
-                }
+                if (remaining > 0) selected_row = colNode.row_bitmap._Find_next(remaining - 1);
+                if(selected_row==colNode.row_bitmap.size()) selected_row=colNode.row_bitmap._Find_first();
+                if(selected_row < 0) continue;
                 
                 // 根据选中的 bankgroup、bank、column、row 得到物理地址
                 uintptr_t addr = reverseMapping(selected_bg, selected_bank, selected_col, selected_row, dqDist(gen));
@@ -348,7 +346,6 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
             }
             return errors;
         }else{
-            std::uniform_real_distribution<float> dist01(0.0f, 1.0f);
             int totalBankLeaves = 0;
             for (int bg = 0; bg < num_bankgroups; bg++) {
                 for (int b = 0; b < num_banks; b++) {
@@ -380,13 +377,53 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
                 BankNode &bankNode = bgNode.banks[selected_bank];
                 //选定bank
 
-                bool tryColumnAdjacent = (dist01(gen) <= x);
-                bool foundmcu = false;
-                if(tryColumnAdjacent){
-                    
+                int x_num=static_cast<int>(std::ceil(num * x));
+                int y_num=num-x_num;
+                std::bitset<1024> foundCols = bankNode.column_bitmap;
+                std::bitset<131072> foundRows;
+                for (int i = 1; i < x_num; i++) {
+                    foundCols &= (bankNode.column_bitmap >> i);
                 }
+                if(foundCols.none())continue;
+                std::vector<int> foundColPos;
+                foundColPos.reserve(x_num);
+                int randStart = std::uniform_int_distribution<int>(0, 1023)(gen);
+                for(int col=randStart;col!=foundCols.size();col=foundCols._Find_next(col)){
+                    foundRows.set();
+                    for(int i=0;i<x_num;i++){
+                        foundRows &= (bankNode.columns[i+col].row_bitmap);
+                    } 
+                    
+                    if(foundRows.any()){
+                        int selected_row = -1;
+                        randStart = std::uniform_int_distribution<int>(0, 131071)(gen);
+                        if (randStart > 0) selected_row = foundRows._Find_next(randStart);
+                        if(selected_row==foundRows.size()) selected_row=foundRows._Find_first();
+                        int selected_dq=dqDist(gen);
+                        for(int i=0;i<x_num;i++){
+                            uintptr_t addr=reverseMapping(selected_bg, selected_bank, col+i, selected_row, selected_dq);
+                            errors.push_back(addr);
+                        }
+                        mcuFound+=x_num;
+                        for(int i=0;i<x_num;i++){
+                            foundRows.set();
+                            for(int j=0;j<y_num;j++){
+                                foundRows&=(bankNode.columns[i+col].row_bitmap>>j);
+                            }
+                            if(foundRows.none())continue;
+                            randStart = std::uniform_int_distribution<int>(0, 131071)(gen);
+                            if (randStart > 0) selected_row = foundRows._Find_next(randStart);
+                            if(selected_row==foundRows.size()) selected_row=foundRows._Find_first();                       
 
-
+                            for(int j=0;j<y_num;j++){
+                                uintptr_t addr=reverseMapping(selected_bg, selected_bank, col+i, selected_row+j , selected_dq);
+                                errors.push_back(addr);
+                            }
+                            mcuFound+=y_num;
+                        }
+                        break;
+                    }
+                }
             }
         }
         return errors;

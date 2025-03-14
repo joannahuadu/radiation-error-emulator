@@ -70,7 +70,7 @@ std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, s
     // bt_tree.printLeafCounts();
     int totalcnt=0;
     for(const auto& pair : errorMap) totalcnt+=pair.second*pair.first;
-    std::vector<uintptr_t> total_Verr;
+    std::vector<Vmem> total_Verr;
     total_Verr.reserve(totalcnt);
     for (const auto& pair : errorMap) {
         int num=pair.first;
