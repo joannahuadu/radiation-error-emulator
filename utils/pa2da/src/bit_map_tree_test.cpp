@@ -1,4 +1,3 @@
-//// filepath: /workplace/emulators/radiation-error-emulator/utils/pa2da/test/bit_map_tree_test.cpp
 #include <iostream>
 #include "bit_map_tree.h"
 #include "addr_mapper.h"

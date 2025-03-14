@@ -1,4 +1,5 @@
 #include "mem_utils.h"
+#include "bitmap_tree.h"
 #include <fstream>
 #include <unistd.h>
 #include <sys/types.h>
@@ -57,9 +58,54 @@ uintptr_t random_uintptr(int seed, uintptr_t start, uintptr_t end) {
     std::uniform_int_distribution<uintptr_t> dist(start, end);
     return dist(rng);
 }
+std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, size_t size, std::ofstream& logfile, int error_bit_num, int flip_bit, const std::string& mapping, const std::map<int,int>& errorMap) {
+    uintptr_t page_size = sysconf(_SC_PAGE_SIZE);
+    std::vector<Pmem> pmems = getPmems(self, Vaddr, size, page_size);
+    //读配置文件，创建DRAM层级、翻译规则和树
+    BitmapTree bt_tree(mapping);
+    for(const auto& pmem :pmems){
+        bt_tree.addRange(pmem.s_Daddr, pmem.t_Daddr);
+        // bt_tree.printLeafCounts();
+    }
+    // bt_tree.printLeafCounts();
+    int totalcnt=0;
+    for(const auto& pair : errorMap) totalcnt+=pair.second*pair.first;
+    std::vector<Vmem> total_Verr;
+    total_Verr.reserve(totalcnt);
+    for (const auto& pair : errorMap) {
+        int num=pair.first;
+        int cnt=pair.second;
+        std::vector<uintptr_t> errors;
+        errors.reserve(cnt*num);
+        errors = bt_tree.getError(num, cnt, 0.8, 0.2, 0);
+        std::cout<<"error daddr: ";
+        for(auto err:errors)std::cout<<std::hex<<err<<" ";
+        std::cout<<std::endl;
+        std::vector<Vmem> Verr;
+        Verr.reserve(cnt*num);
+        Verr=getValidVA_in_pa(self, errors, pmems);  
+        std::cout<<"error vaddr: ";
+        for(auto err:Verr)std::cout<<std::hex<<err.vaddr<<" "<<std::hex<<err.paddr<<std::endl;
+        std::cout<<std::endl;
+        total_Verr.insert(total_Verr.end(), Verr.begin(), Verr.end());
+    }
+    
+    for(const auto& vmem: total_Verr){
+        logfile << "Error PA: " << std::hex << vmem.paddr << ", mapVA: " <<std::hex << vmem.vaddr << std::endl;
+    } 
+
+    for(auto vmem : total_Verr){
+        unsigned char* byteAddress = reinterpret_cast<unsigned char*>(vmem.vaddr);
+        std::bitset<8> bitsBefore(*byteAddress);
+        *byteAddress ^= 1 << flip_bit;
+        std::bitset<8> bitsAfter(*byteAddress); 
+        // logfile << bitsBefore << " -> " << bitsAfter << std::endl; // Print the binary representation
+    }    
+    return total_Verr;
+}
 
 std::vector<Vmem> MemUtils::get_error_Va(MemUtils* self, uintptr_t Vaddr, size_t size, std::ofstream& logfile, int error_bit_num, int flip_bit, 
-const std::string& cfg, const std::string& mapping, const std::map<int,int>& errorMap) {
+    const std::string& cfg, const std::string& mapping, const std::map<int,int>& errorMap) {
     uintptr_t page_size = sysconf(_SC_PAGE_SIZE);
     std::vector<Pmem> pmems = getPmems(self, Vaddr, size, page_size);
     if (!logfile.is_open()) {
@@ -80,7 +126,7 @@ const std::string& cfg, const std::string& mapping, const std::map<int,int>& err
         // break;
     }
 
-    uintptr_t min_Daddr=getMinDA_in_pmems(pmems);//0: 3 xxxx xxxx
+    uintptr_t min_Daddr=getMinDA_in_pmems(pmems);
     uintptr_t max_Daddr=getMaxDA_in_pmems(pmems);
     logfile << "min-max: " << std::hex << min_Daddr << " " << max_Daddr  <<std::endl;
     std::cout << "min-max: " << std::hex << min_Daddr << " " << max_Daddr  <<std::endl;
@@ -146,7 +192,7 @@ const std::string& cfg, const std::string& mapping, const std::map<int,int>& err
         std::bitset<8> bitsBefore(*byteAddress);
         *byteAddress ^= 1 << flip_bit;
         std::bitset<8> bitsAfter(*byteAddress); 
-        logfile << bitsBefore << " -> " << bitsAfter << std::endl; // Print the binary representation
+        // logfile << bitsBefore << " -> " << bitsAfter << std::endl; // Print the binary representation
     }
     // std::cout << std::endl;
     return total_Verr;
@@ -418,8 +464,6 @@ std::vector<Vmem> MemUtils::getValidVA_in_pa(MemUtils* self, const std::vector<u
     std::vector<Vmem> vmems;
     for (uintptr_t daddr : daddrs) { 
         uintptr_t paddr = self->D2P(daddr);
-        //std::cout<<"error daddr: "<< std::hex<< daddr<< ", paddr: " <<std::hex<<paddr<< std::endl;
-
         for (const auto& pmem : pmems) {
             if (pmem.hasP(paddr)) { 
                 Vmem vmem = pmem.PtoV(paddr); 
