@@ -68,10 +68,39 @@ std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, s
         // bt_tree.printLeafCounts();
     }
     // bt_tree.printLeafCounts();
-    std::vector<uintptr_t> errors = bt_tree.getError(errorMap);
+    int totalcnt=0;
+    for(const auto& pair : errorMap) totalcnt+=pair.second*pair.first;
+    std::vector<uintptr_t> total_Verr;
+    total_Verr.reserve(totalcnt);
+    for (const auto& pair : errorMap) {
+        int num=pair.first;
+        int cnt=pair.second;
+        std::vector<uintptr_t> errors;
+        errors.reserve(cnt*num);
+        errors = bt_tree.getError(num, cnt, 0.8, 0.2, 0);
+        std::cout<<"error daddr: ";
+        for(auto err:errors)std::cout<<std::hex<<err<<" ";
+        std::cout<<std::endl;
+        std::vector<Vmem> Verr;
+        Verr.reserve(cnt*num);
+        Verr=getValidVA_in_pa(self, errors, pmems);  
+        std::cout<<"error vaddr: ";
+        for(auto err:Verr)std::cout<<std::hex<<err.vaddr<<" "<<std::hex<<err.paddr<<std::endl;
+        std::cout<<std::endl;
+        total_Verr.insert(total_Verr.end(), Verr.begin(), Verr.end());
+    }
     
+    for(const auto& vmem: total_Verr){
+        logfile << "Error PA: " << std::hex << vmem.paddr << ", mapVA: " <<std::hex << vmem.vaddr << std::endl;
+    } 
 
-    std::vector<Vmem> total_Verr;
+    for(auto vmem : total_Verr){
+        unsigned char* byteAddress = reinterpret_cast<unsigned char*>(vmem.vaddr);
+        std::bitset<8> bitsBefore(*byteAddress);
+        *byteAddress ^= 1 << flip_bit;
+        std::bitset<8> bitsAfter(*byteAddress); 
+        // logfile << bitsBefore << " -> " << bitsAfter << std::endl; // Print the binary representation
+    }    
     return total_Verr;
 }
 
