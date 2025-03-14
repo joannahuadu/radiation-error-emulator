@@ -1,3 +1,0 @@
-/workplace/emulators/radiation-error-emulator/newdram/ramv3/build/CMakeFiles/mapper_test.dir
-/workplace/emulators/radiation-error-emulator/newdram/ramv3/build/CMakeFiles/edit_cache.dir
-/workplace/emulators/radiation-error-emulator/newdram/ramv3/build/CMakeFiles/rebuild_cache.dir

@@ -241,9 +241,9 @@ int main(int argc, char** argv)
     }
 
     // change your path
-    std::string cfg = "../../libREMU/configs/LPDDR4-config.cfg";
-    std::string mapping = "../../libREMU/mappings/LPDDR4_row_interleaving_16.map";
-    std::string tree_mapping = "../../utils/pa2da/configs/lpddr5_jetson_agx_orin.yaml";
+    // std::string cfg = "../../libREMU/configs/LPDDR4-config.cfg";
+    // std::string mapping = "../../libREMU/mappings/LPDDR4_row_interleaving_16.map";
+    std::string tree_mapping = "../../libREMU/configs/lpddr5_jetson_agx_orin.yaml";
     std::string error_file = "../../example/error_counts_"+std::to_string(bitflip) + ".txt";
    
     std::cout << "mapping: " << mapping << std::endl;

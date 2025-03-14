@@ -1,3 +1,0 @@
-/workplace/emulators/radiation-error-emulator/utils/bitcal/build/CMakeFiles/bitcal.dir
-/workplace/emulators/radiation-error-emulator/utils/bitcal/build/CMakeFiles/edit_cache.dir
-/workplace/emulators/radiation-error-emulator/utils/bitcal/build/CMakeFiles/rebuild_cache.dir

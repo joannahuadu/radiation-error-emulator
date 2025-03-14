@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/bitcal.dir/a.cpp.o CMakeFiles/bitcal.dir/bit_tools.cpp.o -o bitcal 
