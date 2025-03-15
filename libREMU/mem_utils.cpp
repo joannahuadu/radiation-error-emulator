@@ -65,6 +65,7 @@ std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, s
     BitmapTree bt_tree(mapping);
     for(const auto& pmem :pmems){
         bt_tree.addRange(pmem.s_Daddr, pmem.t_Daddr);
+        // std::cout << pmem.s_Daddr << "--" << pmem.t_Daddr << "size: " << pmem.size << std::endl;
         // bt_tree.printLeafCounts();
     }
     // bt_tree.printLeafCounts();

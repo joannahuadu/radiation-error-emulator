@@ -90,10 +90,10 @@ void doInference(IExecutionContext& context, float* input, float* output, int* o
     assert(engine.getTensorIOMode(outputName) == TensorIOMode::kOUTPUT);
     assert(engine.getTensorIOMode(outputIndexName) == TensorIOMode::kOUTPUT);
 
-    // Get tensor shapes
-    Dims inputDims = engine.getTensorShape(inputName);
-    Dims outputDims = engine.getTensorShape(outputName);
-    Dims outputIdxDims = engine.getTensorShape(outputIndexName);
+    // // Get tensor shapes
+    // Dims inputDims = engine.getTensorShape(inputName);
+    // Dims outputDims = engine.getTensorShape(outputName);
+    // Dims outputIdxDims = engine.getTensorShape(outputIndexName);
 
     // Create GPU buffers on device
     void* inputBuffer;
@@ -213,8 +213,7 @@ int main(int argc, char** argv)
     int device;
     int lineidx;
     int time;
-    int bias;
-    if (argc == 11 && std::string(argv[1]) == "-d") {
+    if (argc == 10 && std::string(argv[1]) == "-d") {
         engine_name = std::string(argv[2]);
         images_cfg = std::string(argv[3]);
         labels_dir = std::string(argv[4]);
@@ -223,16 +222,14 @@ int main(int argc, char** argv)
         device = std::stoi(argv[7]);
         lineidx = std::stoi(argv[8]);
         time = std::stoi(argv[9]);
-        bias = std::stoi(argv[10]);
         // cudaSetDevice(device);
     } else {
         std::cerr << "arguments not right!" << std::endl;
-        std::cerr << "./resnet50_inference_error -d [.engine] [images_cfg.txt] [labels_dir.txt] [bitflip] [bitidx] [device] [lineidx] [time] [bias]// deserialize plan file and run inference" << std::endl;
+        std::cerr << "./resnet50_inference_error -d [.engine] [images_cfg.txt] [labels_dir.txt] [bitflip] [bitidx] [device] [lineidx] [time]// deserialize plan file and run inference" << std::endl;
         return -1;
     }
 
-    std::string logFileName = "block_" + engine_name + "_" +std::to_string(bitflip)+"_" + std::to_string(bitidx) +  "_" + std::to_string(bias) + "_" + std::to_string(time) + ".txt";
-    std::cout << "logfile path is " << logFileName << std::endl;
+    std::string logFileName = engine_name + "_" +std::to_string(bitflip)+"_" +  std::to_string(bitidx) + "_" + std::to_string(time) + ".txt";
     std::ofstream logfile(logFileName);
     if (!logfile.is_open()) {
         std::cerr << "Failed to open log file" << std::endl;
@@ -266,16 +263,13 @@ int main(int argc, char** argv)
 
 
     uintptr_t Vaddr = reinterpret_cast<uintptr_t>(trtModelStream);
-    std::cout << "vaddr: "  << std::hex << Vaddr <<"-"<<std::dec <<size <<" bias: "<<std::dec<<bias<< std::endl;
+    std::cout << "vaddr: "  << std::hex << Vaddr <<"-"<<std::dec <<size << std::endl;
     // if lineidx == 0, do DNN inference without any error.
     if(lineidx){
         std::map<int, int> errorMap = loadErrors(error_file, lineidx); 
         size_t dram_capacity_gb=64;
         MemUtils memUtils(dram_capacity_gb);
-        // Pmem block =  MemUtils::get_block_in_pmems(&memUtils, Vaddr, size, bias);
-        // std::cout << "block_vaddr: " << std::hex << block.s_Vaddr << "-" << std::dec << block.size << std::endl;
-        // MemUtils::get_error_Va(&memUtils, block.s_Vaddr, block.size, logfile, bitflip, bitidx, cfg, mapping, errorMap);
-        MemUtils::get_error_Va_tree(&memUtils, Vaddr+bias, size-bias, logfile, bitflip, bitidx, tree_mapping, errorMap);
+        MemUtils::get_error_Va_tree(&memUtils, Vaddr+300, size-300, logfile, bitflip, bitidx, tree_mapping, errorMap);
     }
     
 
@@ -315,11 +309,6 @@ int main(int argc, char** argv)
             data[i + INPUT_H * INPUT_W] = pr_img.at<cv::Vec3f>(i)[1];
             data[i + 2 * INPUT_H * INPUT_W] = pr_img.at<cv::Vec3f>(i)[0];
         }
-
-        // Print some values from the preprocessed image
-        // std::cout << "Preprocessed values: " 
-        //           << data[0] << ", " << data[INPUT_H * INPUT_W] << ", " << data[2 * INPUT_H * INPUT_W] 
-        //           << std::endl;
 
         doInference(*context, data, prob, idx, 1);
         // std::cout <<" "<<image_targets[j]<<"-"<<idx[0]<< " " << classes[idx[0]] << " " << prob[0] << std::endl;
