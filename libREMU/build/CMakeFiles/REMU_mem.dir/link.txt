@@ -1,1 +1,0 @@
-/usr/bin/c++ -fPIC  -O0 -shared -Wl,-soname,libREMU_mem.so -o libREMU_mem.so CMakeFiles/REMU_mem.dir/src/Config.o CMakeFiles/REMU_mem.dir/src/LPDDR4.o CMakeFiles/REMU_mem.dir/error_bitmap.o CMakeFiles/REMU_mem.dir/bitmap_tree.o CMakeFiles/REMU_mem.dir/mem_utils.o  /usr/lib/aarch64-linux-gnu/libyaml-cpp.so.0.7.0 

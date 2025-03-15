@@ -246,7 +246,7 @@ int main(int argc, char** argv)
     std::string tree_mapping = "../../libREMU/configs/lpddr5_jetson_agx_orin.yaml";
     std::string error_file = "../../example/error_counts_"+std::to_string(bitflip) + ".txt";
    
-    std::cout << "mapping: " << tree_mapping << std::endl;
+    std::cout << "mapping: " << mapping << std::endl;
 
     char *trtModelStream{nullptr};
     size_t size{0};
