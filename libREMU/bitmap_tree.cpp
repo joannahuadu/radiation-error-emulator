@@ -378,17 +378,17 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
 
             //ADD: shape of MCU
             std::uniform_real_distribution<double> ran(0, 1);
-            int x_num, y_num = 0;
+            int x_num = 1;
+            int y_num = 0;
             while(x_num + y_num < num){
                 double rand_num = ran(gen); 
                 if (rand_num >= 0.2) x_num+=1;
                 else y_num+=1;
             }
-            // TODO: segmetation fault here???
-            std::vector<int> foundColPos;
-            foundColPos.resize(x_num, 0); 
-            for(int j=0;j<y_num;j++)foundColPos[rand() % x_num]+=1;
-
+            // fix: segmetation fault: x_num>0
+            std::vector<int> foundColPos(x_num, 0);
+            for(int j=0;j<y_num;++j)foundColPos[target % x_num]+=1;
+            
             //Start select.
             std::bitset<1024> foundCols = bankNode.column_bitmap;
             std::bitset<131072> foundRows;

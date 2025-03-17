@@ -57,4 +57,4 @@ def run_resnet50(times, t):
             log.write(f'Maximum Accuracy: {max_accuracy}\n')
             log.flush()
 if __name__ == '__main__':
-    run_resnet50(1000, 1)
+    run_resnet50(1000, 2)
