@@ -17,8 +17,8 @@ BitmapTree::BankNode::BankNode(int idx, int num_columns)
     }
 }
 
-// BankGroupNode 构造函数：预分配 bank 节点
-BitmapTree::BankGroupNode::BankGroupNode(int idx, int num_banks, int num_columns)
+// ChannelNode 构造函数：预分配 bank 节点
+BitmapTree::ChannelNode::ChannelNode(int idx, int num_banks, int num_columns)
     : index(idx), leaf_count(0)
 {
     banks.reserve(num_banks);
@@ -28,23 +28,23 @@ BitmapTree::BankGroupNode::BankGroupNode(int idx, int num_banks, int num_columns
 }
 
 // rtNode 构造函数
-BitmapTree::rtNode::rtNode(int num_banks, int num_bankgroups, int num_columns)
+BitmapTree::rtNode::rtNode(int num_banks, int num_channels, int num_columns)
     : leaf_count(0)
 {
-    bankgroups.reserve(num_bankgroups);
-    for (int i = 0; i < num_bankgroups; i++) {
-        bankgroups.emplace_back(i, num_banks, num_columns);
+    channels.reserve(num_channels);
+    for (int i = 0; i < num_channels; i++) {
+        channels.emplace_back(i, num_banks, num_columns);
     }
 }
 
 
 // 初始化树结构
 void BitmapTree::initializeTree() {
-    num_bankgroups = 1 << bankgroup_bits; // 2^(bankgroup_bits)
+    num_channels = 1 << channel_bits; // 2^(channel_bits)
     num_banks = 1 << bank_bits;             // 2^(bank_bits)
     num_columns = 1 << column_bits;         // 2^(column_bits)
     num_rows = 1 << row_bits;
-    rt = rtNode(num_banks, num_bankgroups, num_columns);
+    rt = rtNode(num_banks, num_channels, num_columns);
 }
 
 // 从物理地址（已右移 dq 后）中提取某个字段的值，依据 mapping 中给定的 bit 位列表。
@@ -62,8 +62,8 @@ BitmapTree::BitmapTree(const std::string& mappingFile) {
     try {
         YAML::Node root = YAML::LoadFile(mappingFile);
 
-        // 解析 dram 层次参数，取 bankgroup、bank、column、row 四层
-        bankgroup_bits = root["dram"]["hierarchy"]["bankgroup_bits"].as<int>();
+        // 解析 dram 层次参数，取 channel、bank、column、row 四层
+        channel_bits = root["dram"]["hierarchy"]["channel_bits"].as<int>();
         bank_bits = root["dram"]["hierarchy"]["bank_bits"].as<int>();
         column_bits = root["dram"]["hierarchy"]["column_bits"].as<int>();
         row_bits = root["dram"]["hierarchy"]["row_bits"].as<int>();
@@ -74,7 +74,7 @@ BitmapTree::BitmapTree(const std::string& mappingFile) {
         // 解析映射规则（映射规则中各 key 对应的 vector 应与各层位宽匹配）
         YAML::Node mappingNode = root["mapping"]["bit_mapping"];
         map_column = mappingNode["column"].as<std::vector<int>>();
-        map_bankgroup = mappingNode["bankgroup"].as<std::vector<int>>();
+        map_channel = mappingNode["channel"].as<std::vector<int>>();
         map_bank = mappingNode["bank"].as<std::vector<int>>();
         map_row = mappingNode["row"].as<std::vector<int>>();
 
@@ -97,12 +97,12 @@ void BitmapTree::addRange(uintptr_t s_Daddr, uintptr_t t_Daddr) {
     for (uintptr_t shifted = s_Daddr; shifted <= t_Daddr; shifted++) {
         // 提取各层字段的值
         int col_val = extractField(shifted, map_column);
-        int bankgroup_val = extractField(shifted, map_bankgroup);
+        int channel_val = extractField(shifted, map_channel);
         int bank_val = extractField(shifted, map_bank);
         int row_val = extractField(shifted, map_row);
 
         // 检查索引是否超出范围
-        if (bankgroup_val < 0 || bankgroup_val >= num_bankgroups ||
+        if (channel_val < 0 || channel_val >= num_channels ||
             bank_val < 0 || bank_val >= num_banks ||
             col_val < 0 || col_val >= num_columns || 
             row_val < 0 || row_val >= num_rows ) {
@@ -111,8 +111,8 @@ void BitmapTree::addRange(uintptr_t s_Daddr, uintptr_t t_Daddr) {
         }
 
         // 定位到对应的节点
-        BankGroupNode &bgNode = rt.bankgroups[bankgroup_val];
-        BankNode &bNode = bgNode.banks[bank_val];
+        ChannelNode &chNode = rt.channels[channel_val];
+        BankNode &bNode = chNode.banks[bank_val];
         ColumnNode &colNode = bNode.columns[col_val];
 
         // 对 bank 节点：如果对应的 column 尚未置 1，则置 1 并更新叶子计数
@@ -126,7 +126,7 @@ void BitmapTree::addRange(uintptr_t s_Daddr, uintptr_t t_Daddr) {
             colNode.leaf_count++;  // 新的 row 更新
             rt.leaf_count++;  
             bNode.leaf_count++;    
-            bgNode.leaf_count++; 
+            chNode.leaf_count++; 
         }
 
     }
@@ -137,13 +137,13 @@ void BitmapTree::addRange(uintptr_t s_Daddr, uintptr_t t_Daddr) {
 void BitmapTree::printLeafCounts() const {
     std::cout << "BitmapTree Leaf Counts:" << std::endl;
     std::cout << "Virtual Root [leaf_count: " << rt.leaf_count << "]" << std::endl;
-    // 遍历所有 BankGroup
-    for (size_t i = 0; i < rt.bankgroups.size(); ++i) {
-        const BankGroupNode &bg = rt.bankgroups[i];
-        std::cout << "BankGroup " << bg.index << " [leaf_count: " << bg.leaf_count << "]" << std::endl;
-        // 遍历 BankGroup 下的所有 Bank
-        for (size_t j = 0; j < bg.banks.size(); ++j) {
-            const BankNode &b = bg.banks[j];
+    // 遍历所有 channel
+    for (size_t i = 0; i < rt.channels.size(); ++i) {
+        const ChannelNode &ch = rt.channels[i];
+        std::cout << "channel " << ch.index << " [leaf_count: " << ch.leaf_count << "]" << std::endl;
+        // 遍历 channel 下的所有 Bank
+        for (size_t j = 0; j < ch.banks.size(); ++j) {
+            const BankNode &b = ch.banks[j];
             std::cout << "  Bank " << b.index << " [leaf_count: " << b.leaf_count << "]" << std::endl;
             // 遍历 Bank 下的所有 Column
             for (size_t k = 0; k < b.columns.size(); ++k) {
@@ -205,13 +205,13 @@ void BitmapTree::printDetailed() const {
     std::cout << "BitmapTree Detailed Structure:" << std::endl;
     std::cout << "Virtual Root [leaf_count: " << rt.leaf_count << "]" << std::endl;
 
-    // 遍历所有 BankGroup
-    for (size_t i = 0; i < rt.bankgroups.size(); ++i) {
-        const BankGroupNode &bg = rt.bankgroups[i];
-        std::cout << "BankGroup " << bg.index << " [leaf_count: " << bg.leaf_count << "]" << std::endl;
-        // 遍历 BankGroup 下的所有 Bank
-        for (size_t j = 0; j < bg.banks.size(); ++j) {
-            const BankNode &b = bg.banks[j];
+    // 遍历所有 channel
+    for (size_t i = 0; i < rt.channels.size(); ++i) {
+        const ChannelNode &ch = rt.channels[i];
+        std::cout << "channel " << ch.index << " [leaf_count: " << ch.leaf_count << "]" << std::endl;
+        // 遍历 channel 下的所有 Bank
+        for (size_t j = 0; j < ch.banks.size(); ++j) {
+            const BankNode &b = ch.banks[j];
             std::cout << "  Bank " << b.index << " [leaf_count: " << b.leaf_count << "]" << std::endl;
             // 将 Bank 的 column_bitmap 转为 hex 格式并压缩连续的 '0'
             std::string colBitmapStr = bitsetToHex(b.column_bitmap.to_string());
@@ -247,13 +247,13 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
         std::uniform_int_distribution<uintptr_t> dqDist(0, (1UL << dq) - 1);        
 
         // 定义逆映射函数：将各层索引转换回物理地址（注意：物理地址在映射前右移过 dq 位）
-        auto reverseMapping = [this](int bg, int b, int c, int r, uintptr_t dq_rand) -> uintptr_t {
+        auto reverseMapping = [this](int ch, int b, int c, int r, uintptr_t dq_rand) -> uintptr_t {
             uintptr_t addr = 0;
-            int field = bg;
-            // bankgroup
-            for (size_t i = 0; i < map_bankgroup.size(); i++) {
+            int field = ch;
+            // channel
+            for (size_t i = 0; i < map_channel.size(); i++) {
                 if (field & (1 << i))
-                    addr |= (1UL << map_bankgroup[i]);
+                    addr |= (1UL << map_channel[i]);
             }
             // bank
             field = b;
@@ -279,10 +279,10 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
         };      
         /**
         num==1的情况
-        利用各层（rt、bankgroup、bank、column）的 leaf_count 信息，直接做分层随机采样，而不必遍历整个树。
+        利用各层（rt、channel、bank、column）的 leaf_count 信息，直接做分层随机采样，而不必遍历整个树。
         基本思想是：
         从全局叶子总数 rt.leaf_count 中随机选出一个目标下标。
-        依次在 bankgroup、bank、column 这几层中，用当前子树的 leaf_count 来确定下标所在的子节点，然后在最底层（ColumnNode 的 row_bitmap 中）定位到具体的叶子。
+        依次在 channel、bank、column 这几层中，用当前子树的 leaf_count 来确定下标所在的子节点，然后在最底层（ColumnNode 的 row_bitmap 中）定位到具体的叶子。
         重复采样，直到获得所需的 cnt 个唯一叶子（物理地址）。
         */
         if(num==1){
@@ -292,32 +292,32 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
                 // 在全局范围内随机选一个目标下标 [0, totalLeaves-1]
                 int target = std::uniform_int_distribution<int>(0, totalLeaves - 1)(gen);
                 int remaining = target;
-                int selected_bg = -1;
-                // 根据 bankgroup 的 leaf_count 定位目标 bankgroup
-                for (int bg = 0; bg < num_bankgroups; bg++) {
-                    if (remaining < rt.bankgroups[bg].leaf_count) {
-                        selected_bg = bg;
+                int selected_ch = -1;
+                // 根据 channel 的 leaf_count 定位目标 channel
+                for (int ch = 0; ch < num_channels; ch++) {
+                    if (remaining < rt.channels[ch].leaf_count) {
+                        selected_ch = ch;
                         break;
                     } else {
-                        remaining -= rt.bankgroups[bg].leaf_count;
+                        remaining -= rt.channels[ch].leaf_count;
                     }
                 }
-                if(selected_bg < 0) continue;
+                if(selected_ch < 0) continue;
                 
-                BankGroupNode &bgNode = rt.bankgroups[selected_bg];
+                ChannelNode &chNode = rt.channels[selected_ch];
                 int selected_bank = -1;
-                // 在 bankgroup 内，根据每个 bank 的 leaf_count 选择 bank
+                // 在 channel 内，根据每个 bank 的 leaf_count 选择 bank
                 for (int b = 0; b < num_banks; b++) {
-                    if (remaining < bgNode.banks[b].leaf_count) {
+                    if (remaining < chNode.banks[b].leaf_count) {
                         selected_bank = b;
                         break;
                     } else {
-                        remaining -= bgNode.banks[b].leaf_count;
+                        remaining -= chNode.banks[b].leaf_count;
                     }
                 }
                 if(selected_bank < 0) continue;
                 
-                BankNode &bankNode = bgNode.banks[selected_bank];
+                BankNode &bankNode = chNode.banks[selected_bank];
                 int selected_col = -1;
                 // 在 bank 内，根据每个 ColumnNode 的 leaf_count 选择 column
                 for (int c = 0; c < num_columns; c++) {
@@ -339,17 +339,17 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
                 if(selected_row==colNode.row_bitmap.size()) selected_row=colNode.row_bitmap._Find_first();
                 if(selected_row < 0) continue;
                 
-                // 根据选中的 bankgroup、bank、column、row 得到物理地址
-                uintptr_t addr = reverseMapping(selected_bg, selected_bank, selected_col, selected_row, dqDist(gen));
+                // 根据选中的 channel、bank、column、row 得到物理地址
+                uintptr_t addr = reverseMapping(selected_ch, selected_bank, selected_col, selected_row, dqDist(gen));
                 errors.push_back(addr);
                 seuFound++;
             }
             return errors;
         }else{
             int totalBankLeaves = 0;
-            for (int bg = 0; bg < num_bankgroups; bg++) {
+            for (int ch = 0; ch < num_channels; ch++) {
                 for (int b = 0; b < num_banks; b++) {
-                    totalBankLeaves += rt.bankgroups[bg].banks[b].leaf_count;
+                    totalBankLeaves += rt.channels[ch].banks[b].leaf_count;
                 }
             }
             int mcuFound = 0;
@@ -359,28 +359,28 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
                 Attempts++;
                 int target = std::uniform_int_distribution<int>(0, totalBankLeaves - 1)(gen);
                 int remaining = target;
-                int selected_bg = -1;
+                int selected_ch = -1;
                 int selected_bank = -1;
-                for (int bg = 0; bg < num_bankgroups; bg++) {
+                for (int ch = 0; ch < num_channels; ch++) {
                     for (int b = 0; b < num_banks; b++) {
-                        if (remaining < rt.bankgroups[bg].banks[b].leaf_count) {
-                            selected_bg = bg;
+                        if (remaining < rt.channels[ch].banks[b].leaf_count) {
+                            selected_ch = ch;
                             selected_bank = b;
                             break;
                         } else {
-                            remaining -= rt.bankgroups[bg].banks[b].leaf_count;
+                            remaining -= rt.channels[ch].banks[b].leaf_count;
                         }
                     }
                     if(selected_bank >= 0) break;
                 }
-                BankGroupNode &bgNode = rt.bankgroups[selected_bg];
-                BankNode &bankNode = bgNode.banks[selected_bank];
+                ChannelNode &chNode = rt.channels[selected_ch];
+                BankNode &bankNode = chNode.banks[selected_bank];
                 //选定bank
 
                 int x_num=static_cast<int>(std::ceil(num * x));
                 int y_num=num-x_num;
                 std::bitset<1024> foundCols = bankNode.column_bitmap;
-                std::bitset<131072> foundRows;
+                std::bitset<65536> foundRows;
                 for (int i = 1; i < x_num; i++) {
                     foundCols &= (bankNode.column_bitmap >> i);
                 }
@@ -396,27 +396,27 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
                     
                     if(foundRows.any()){
                         int selected_row = -1;
-                        randStart = std::uniform_int_distribution<int>(0, 131071)(gen);
+                        randStart = std::uniform_int_distribution<int>(0, 65535)(gen);
                         if (randStart > 0) selected_row = foundRows._Find_next(randStart);
                         if(selected_row==foundRows.size()) selected_row=foundRows._Find_first();
                         int selected_dq=dqDist(gen);
                         for(int i=0;i<x_num;i++){
-                            uintptr_t addr=reverseMapping(selected_bg, selected_bank, col+i, selected_row, selected_dq);
+                            uintptr_t addr=reverseMapping(selected_ch, selected_bank, col+i, selected_row, selected_dq);
                             errors.push_back(addr);
                         }
                         mcuFound+=x_num;
                         for(int i=0;i<x_num;i++){
                             foundRows.set();
                             for(int j=0;j<y_num;j++){
-                                foundRows&=(bankNode.columns[i+col].row_bitmap>>j);
+                                foundRows &=(bankNode.columns[i+col].row_bitmap>>j);
                             }
                             if(foundRows.none())continue;
-                            randStart = std::uniform_int_distribution<int>(0, 131071)(gen);
+                            randStart = std::uniform_int_distribution<int>(0, 65535)(gen);
                             if (randStart > 0) selected_row = foundRows._Find_next(randStart);
                             if(selected_row==foundRows.size()) selected_row=foundRows._Find_first();                       
 
                             for(int j=0;j<y_num;j++){
-                                uintptr_t addr=reverseMapping(selected_bg, selected_bank, col+i, selected_row+j , selected_dq);
+                                uintptr_t addr=reverseMapping(selected_ch, selected_bank, col+i, selected_row+j , selected_dq);
                                 errors.push_back(addr);
                             }
                             mcuFound+=y_num;

@@ -20,7 +20,7 @@ include_directories(/usr/include/aarch64-linux-gnu/)
 link_directories(/usr/lib/aarch64-linux-gnu/)
 
 
-set(ERROR_BITMAP_LIB_DIR "../libREMU/build")
+set(ERROR_BITMAP_LIB_DIR "/workplace/xln/radiation-error-emulator/libREMU/build")
 find_library(ERROR_BITMAP_LIB REMU_mem PATHS ${ERROR_BITMAP_LIB_DIR} REQUIRED)
 message(STATUS "${ERROR_BITMAP_LIB_DIR}")
 message(STATUS "${ERROR_BITMAP_LIB}")

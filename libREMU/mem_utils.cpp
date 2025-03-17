@@ -78,15 +78,15 @@ std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, s
         std::vector<uintptr_t> errors;
         errors.reserve(cnt*num);
         errors = bt_tree.getError(num, cnt, 0.8, 0.2, 0);
-        std::cout<<"error daddr: ";
-        for(auto err:errors)std::cout<<std::hex<<err<<" ";
-        std::cout<<std::endl;
+        // std::cout<<"error daddr: ";
+        // for(auto err:errors)std::cout<<std::hex<<err<<" ";
+        // std::cout<<std::endl;
         std::vector<Vmem> Verr;
         Verr.reserve(cnt*num);
         Verr=getValidVA_in_pa(self, errors, pmems);  
-        std::cout<<"error vaddr: ";
-        for(auto err:Verr)std::cout<<std::hex<<err.vaddr<<" "<<std::hex<<err.paddr<<std::endl;
-        std::cout<<std::endl;
+        // std::cout<<"error vaddr: ";
+        // for(auto err:Verr)std::cout<<std::hex<<err.vaddr<<" "<<std::hex<<err.paddr<<std::endl;
+        // std::cout<<std::endl;
         total_Verr.insert(total_Verr.end(), Verr.begin(), Verr.end());
     }
     
