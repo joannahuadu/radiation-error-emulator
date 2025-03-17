@@ -42,6 +42,12 @@ target_link_libraries(resnet50_inference_error cudart)
 target_link_libraries(resnet50_inference_error ${ERROR_BITMAP_LIB})
 target_link_libraries(resnet50_inference_error ${OpenCV_LIBS})
 
+add_executable(resnet50_inference_error_paraonly ${PROJECT_SOURCE_DIR}/resnet50_inference_error_paraonly.cpp)
+target_link_libraries(resnet50_inference_error_paraonly nvinfer)
+target_link_libraries(resnet50_inference_error_paraonly cudart)
+target_link_libraries(resnet50_inference_error_paraonly ${ERROR_BITMAP_LIB})
+target_link_libraries(resnet50_inference_error_paraonly ${OpenCV_LIBS})
+
 
 add_definitions(-O2 -pthread)
 

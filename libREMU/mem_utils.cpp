@@ -61,6 +61,20 @@ uintptr_t random_uintptr(int seed, uintptr_t start, uintptr_t end) {
 std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, size_t size, std::ofstream& logfile, int error_bit_num, int flip_bit, const std::string& mapping, const std::map<int,int>& errorMap) {
     uintptr_t page_size = sysconf(_SC_PAGE_SIZE);
     std::vector<Pmem> pmems = getPmems(self, Vaddr, size, page_size);
+    
+    logfile << "Pmems details:" << std::endl;
+    for (const auto& pmem : pmems) {
+        logfile << "Start PA: " << std::hex << pmem.s_Paddr
+                  << ", End PA: " << std::hex << pmem.t_Paddr
+                  << ", Size: " << std::dec << pmem.size
+                  << ", Start VA: " << std::hex << pmem.s_Vaddr
+                  << ", End VA: " << std::hex << pmem.t_Vaddr
+                  << ", Bias: " << std::dec << pmem.bias 
+                  << ", Start DA: " << std::hex << pmem.s_Daddr
+                  << ", End DA: " << std::hex << pmem.t_Daddr
+                  << ", Base: " << std::dec << pmem.base << std::endl;
+        break;
+    }
     //读配置文件，创建DRAM层级、翻译规则和树
     BitmapTree bt_tree(mapping);
     for(const auto& pmem :pmems){
@@ -79,20 +93,21 @@ std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, s
         std::vector<uintptr_t> errors;
         errors.reserve(cnt*num);
         errors = bt_tree.getError(num, cnt, 0.8, 0.2, 0);
-        std::cout<<"error daddr: ";
-        for(auto err:errors)std::cout<<std::hex<<err<<" ";
-        std::cout<<std::endl;
+        // std::cout<<"error daddr: ";
+        // for(auto err:errors)std::cout<<std::hex<<err<<" ";
+        // std::cout<<std::endl;
         std::vector<Vmem> Verr;
         Verr.reserve(cnt*num);
         Verr=getValidVA_in_pa(self, errors, pmems);  
-        std::cout<<"error vaddr: ";
-        for(auto err:Verr)std::cout<<std::hex<<err.vaddr<<" "<<std::hex<<err.paddr<<std::endl;
-        std::cout<<std::endl;
+        // std::cout<<"error vaddr: ";
+        // for(auto err:Verr)std::cout<<std::hex<<err.vaddr<<" "<<std::hex<<err.paddr<<std::endl;
+        // std::cout<<std::endl;
         total_Verr.insert(total_Verr.end(), Verr.begin(), Verr.end());
     }
     
     for(const auto& vmem: total_Verr){
         logfile << "Error PA: " << std::hex << vmem.paddr << ", mapVA: " <<std::hex << vmem.vaddr << std::endl;
+        // break;
     } 
 
     for(auto vmem : total_Verr){

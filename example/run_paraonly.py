@@ -9,10 +9,10 @@ def run_resnet50(times, t):
     total_accumulated_time = 0
     total_bit=100
     flip_bit=7
-    log_file="0317_{0}_{1}_int8_clean_abort300_{2}.txt".format(total_bit, flip_bit, t)
+    log_file="0317_{0}_{1}_int8_clean_abort300-796616_{2}.txt".format(total_bit, flip_bit, t)
     with open(log_file, 'w') as log:
         for i in range(times+1):
-            command = f'sudo ./resnet50_inference_error -d resnet50.engine ../images_cfg.txt  ../nwpu_labels.txt {total_bit} {flip_bit} 0 {i} {t}'
+            command = f'sudo ./resnet50_inference_error_paraonly -d resnet50.engine ../images_cfg.txt  ../nwpu_labels.txt {total_bit} {flip_bit} 0 {i} {t}'
             print(f'Running: {command}')
             start_time = time.time()
 

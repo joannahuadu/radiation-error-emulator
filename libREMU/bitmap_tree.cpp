@@ -251,25 +251,25 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
         // bankgroup
         for (size_t i = 0; i < map_bankgroup.size(); i++) {
             if (field & (1 << i))
-                addr |= (1UL << map_bankgroup[i]);
+                addr |= (1UL << map_bankgroup[map_bankgroup.size()-1-i]); //fix
         }
         // bank
         field = b;
         for (size_t i = 0; i < map_bank.size(); i++) {
             if (field & (1 << i))
-                addr |= (1UL << map_bank[i]);
+                addr |= (1UL << map_bank[map_bank.size()-1-i]); //fix
         }
         // column
         field = c;
         for (size_t i = 0; i < map_column.size(); i++) {
             if (field & (1 << i))
-                addr |= (1UL << map_column[i]);
+                addr |= (1UL << map_column[map_column.size()-1-i]); //fix
         }
         // row
         field = r;
         for (size_t i = 0; i < map_row.size(); i++) {
             if (field & (1 << i))
-                addr |= (1UL << map_row[i]);
+                addr |= (1UL << map_row[map_row.size()-1-i]); //fix
         }
         // 恢复 dq 位
         addr = (addr << dq) | dq_rand;
@@ -333,10 +333,11 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
             
             ColumnNode &colNode = bankNode.columns[selected_col];
             int selected_row = -1;
-            if (remaining > 0) selected_row = colNode.row_bitmap._Find_next(remaining - 1);
+            // fix: 让row的选择更随机
+            int randStart = std::uniform_int_distribution<int>(0, 131071)(gen);
+            if (randStart > 0) selected_row = colNode.row_bitmap._Find_next(randStart);
             if(selected_row==colNode.row_bitmap.size()) selected_row=colNode.row_bitmap._Find_first();
-            if(selected_row < 0) continue;
-            
+            // std::cout << "["  << seuFound << "]: " << selected_bg << " "<< selected_bank << " " << selected_col << " " << selected_row  << std::endl;
             // 根据选中的 bankgroup、bank、column、row 得到物理地址
             uintptr_t addr = reverseMapping(selected_bg, selected_bank, selected_col, selected_row, dqDist(gen));
             errors.push_back(addr);
@@ -375,50 +376,54 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
             BankNode &bankNode = bgNode.banks[selected_bank];
             //选定bank
 
-            int x_num=static_cast<int>(std::ceil(num * x));
-            int y_num=num-x_num;
+            //ADD: shape of MCU
+            std::uniform_real_distribution<double> ran(0, 1);
+            int x_num, y_num = 0;
+            while(x_num + y_num < num){
+                double rand_num = ran(gen); 
+                if (rand_num >= 0.2) x_num+=1;
+                else y_num+=1;
+            }
+            // TODO: segmetation fault here???
+            std::vector<int> foundColPos;
+            foundColPos.resize(x_num, 0); 
+            for(int j=0;j<y_num;j++)foundColPos[rand() % x_num]+=1;
+
+            //Start select.
             std::bitset<1024> foundCols = bankNode.column_bitmap;
             std::bitset<131072> foundRows;
             for (int i = 1; i < x_num; i++) {
-                foundCols &= (bankNode.column_bitmap >> i);
+                foundCols &= (bankNode.column_bitmap << i); //fix: should move left
             }
-            if(foundCols.none())continue;
-            std::vector<int> foundColPos;
-            foundColPos.reserve(x_num);
+            if(foundCols.none())continue; //如果没有相邻列，则直接下一个target 
             int randStart = std::uniform_int_distribution<int>(0, 1023)(gen);
-            for(int col=randStart;col!=foundCols.size();col=foundCols._Find_next(col)){
+            for(int col=foundCols._Find_next(randStart);col!=foundCols.size();col=foundCols._Find_next(col)){
                 foundRows.set();
                 for(int i=0;i<x_num;i++){
                     foundRows &= (bankNode.columns[i+col].row_bitmap);
-                } 
-                
-                if(foundRows.any()){
+                    for(int j=0;j<foundColPos[i];j++){
+                        // TODO: some shapes are not included, might move right >>j and selected_row-j
+                        foundRows&=(bankNode.columns[i+col].row_bitmap<<j); // fix: should move left
+                    }
+                }
+                // std::cout << foundRows << " " << foundRows.any() << std::endl;
+                if(foundRows.any()){ //如果col的相邻列没有相同行，则下一个col
                     int selected_row = -1;
                     randStart = std::uniform_int_distribution<int>(0, 131071)(gen);
                     if (randStart > 0) selected_row = foundRows._Find_next(randStart);
                     if(selected_row==foundRows.size()) selected_row=foundRows._Find_first();
                     int selected_dq=dqDist(gen);
                     for(int i=0;i<x_num;i++){
+                        // std::cout << "["  << i << "]: " << selected_bg << " "<< selected_bank << " " << col+i << " " << selected_row << " " << selected_dq << std::endl;
                         uintptr_t addr=reverseMapping(selected_bg, selected_bank, col+i, selected_row, selected_dq);
                         errors.push_back(addr);
-                    }
-                    mcuFound+=x_num;
-                    for(int i=0;i<x_num;i++){
-                        foundRows.set();
-                        for(int j=0;j<y_num;j++){
-                            foundRows&=(bankNode.columns[i+col].row_bitmap>>j);
-                        }
-                        if(foundRows.none())continue;
-                        randStart = std::uniform_int_distribution<int>(0, 131071)(gen);
-                        if (randStart > 0) selected_row = foundRows._Find_next(randStart);
-                        if(selected_row==foundRows.size()) selected_row=foundRows._Find_first();                       
-
-                        for(int j=0;j<y_num;j++){
+                        for(int j=1;j<=foundColPos[i];j++){      
+                            // std::cout << "[" << i <<", " << j << "]: " << selected_bg << " "<< selected_bank << " " << col+i << " " << selected_row+j << " " << selected_dq << std::endl;                 
                             uintptr_t addr=reverseMapping(selected_bg, selected_bank, col+i, selected_row+j , selected_dq);
                             errors.push_back(addr);
                         }
-                        mcuFound+=y_num;
                     }
+                    mcuFound+=1;
                     break;
                 }
             }
