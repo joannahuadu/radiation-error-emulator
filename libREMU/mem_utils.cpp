@@ -92,10 +92,9 @@ std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, s
         int cnt=pair.second;
         int cntz = 0;
         std::vector<uintptr_t> errors;
-        // errors.reserve(cnt*num);
+        errors.reserve(cnt*num);
         if(z>0 & num>1) {
             cntz = static_cast<int>(std::round(cnt * z));
-            std::cout << "cntz: " << cntz << std::endl;
             std::vector<uintptr_t> errors1, errors2;
             if(cntz>0) errors1 = bt_tree.getError(1, cntz, 0.8);
             if((cnt-cntz)>0) errors2 = bt_tree.getError(num, cnt-cntz, 0.8);
@@ -106,7 +105,7 @@ std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, s
         // for(auto err:errors)std::cout<<std::hex<<err<<" ";
         // std::cout<<std::endl;
         std::vector<Vmem> Verr;
-        // Verr.reserve(cnt*num);
+        Verr.reserve(cnt*num);
         Verr=getValidVA_in_pa(self, errors, pmems, num, cntz);  
         // std::cout<<"error vaddr: ";
         // for(auto err:Verr)std::cout<<std::hex<<err.vaddr<<" "<<std::hex<<err.paddr<<std::endl;
