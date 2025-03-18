@@ -229,7 +229,7 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    std::string logFileName = engine_name + "_" +std::to_string(bitflip)+"_" +  std::to_string(bitidx) + "_" + std::to_string(time) + ".txt";
+    std::string logFileName = engine_name + "_" +std::to_string(bitflip)+"_" +  std::to_string(bitidx) + "_abort500000_" + std::to_string(time) + ".txt";
     std::ofstream logfile(logFileName);
     if (!logfile.is_open()) {
         std::cerr << "Failed to open log file" << std::endl;
@@ -269,10 +269,10 @@ int main(int argc, char** argv)
         std::map<int, int> errorMap = loadErrors(error_file, lineidx); 
         size_t dram_capacity_gb=64;
         MemUtils memUtils(dram_capacity_gb);
-        MemUtils::get_error_Va_tree(&memUtils, Vaddr+300, size-300, logfile, bitflip, bitidx, tree_mapping, errorMap);
+        MemUtils::get_error_Va_tree(&memUtils, Vaddr+300, size-500000, logfile, bitflip, bitidx, tree_mapping, errorMap);
     }
     
-
+    //inject errors may incur segmentation fault.
     ICudaEngine* engine = runtime->deserializeCudaEngine(trtModelStream, size);
     assert(engine != nullptr);
 

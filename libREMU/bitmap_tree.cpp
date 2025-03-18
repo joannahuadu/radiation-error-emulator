@@ -243,7 +243,8 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<uintptr_t> dqDist(0, (1UL << dq) - 1);        
-
+    int MAX_ATTEMPTS = 20;
+    int Attempts = 0;
     // 定义逆映射函数：将各层索引转换回物理地址（注意：物理地址在映射前右移过 dq 位）
     auto reverseMapping = [this](int bg, int b, int c, int r, uintptr_t dq_rand) -> uintptr_t {
         uintptr_t addr = 0;
@@ -286,7 +287,9 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
     if(num==1){
         int totalLeaves = rt.leaf_count;
         int seuFound = 0;
-        while(seuFound < cnt) {
+        Attempts = 0;
+        while(seuFound < cnt &&  Attempts < MAX_ATTEMPTS*cnt) {
+            Attempts++;
             // 在全局范围内随机选一个目标下标 [0, totalLeaves-1]
             int target = std::uniform_int_distribution<int>(0, totalLeaves - 1)(gen);
             int remaining = target;
@@ -342,7 +345,6 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
             errors.push_back(addr);
             seuFound++;
         }
-        return errors;
     }else{
         int totalBankLeaves = 0;
         for (int bg = 0; bg < num_bankgroups; bg++) {
@@ -351,8 +353,7 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
             }
         }
         int mcuFound = 0;
-        int MAX_ATTEMPTS = 128;
-        int Attempts = 0;
+        Attempts = 0;
         while(mcuFound < cnt && Attempts < MAX_ATTEMPTS*cnt){
             Attempts++;
             int target = std::uniform_int_distribution<int>(0, totalBankLeaves - 1)(gen);
@@ -428,5 +429,6 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
             }
         }
     }
+    if(Attempts==MAX_ATTEMPTS*cnt)std::cout<<"Time out!!!"<<std::endl;
     return errors;
 }
