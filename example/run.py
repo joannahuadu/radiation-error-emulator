@@ -7,15 +7,15 @@ def run_resnet50(times, t):
     accuracies = []
     total_times = []
     total_accumulated_time = 0
-    total_bit=100
+    total_bit=600
     flip_bit=7
-    bias=13000 # the sensitive area.
-    log_file="block_{0}_{1}_int8_clean_{2}_{3}.txt".format(total_bit, flip_bit, bias, t)
+    log_file="0317_{0}_{1}_int8_clean_abort300_{2}.txt".format(total_bit, flip_bit, t)
     with open(log_file, 'w') as log:
         for i in range(times+1):
+
             # xxx.engine: change your own TensorRT engine file
             # command = f'sudo ./resnet50_inference_error -d xxx.engine ../images_cfg.txt  ../nwpu_labels.txt {total_bit} {flip_bit} 0 {i} {t} {bias}'
-            command = f"sudo ./resnet50_inference_error -d resnet50.engine /workplace/data1/data/DAC25/resnet50/images_cfg.txt /workplace/data1/data/DAC25/resnet50/nwpu_labels.txt {total_bit} {flip_bit} 0 {i} {t} {bias}"
+            command = f'sudo ./resnet50_inference_error -d resnet50.engine ../images_cfg.txt  ../nwpu_labels.txt {total_bit} {flip_bit} 0 {i} {t}'            
             print(f'Running: {command}')
             start_time = time.time()
 

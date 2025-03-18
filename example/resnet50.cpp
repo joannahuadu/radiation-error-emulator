@@ -262,8 +262,9 @@ void setLayerPrecision(INetworkDefinition* network)
     {
         auto layer = network->getLayer(i);
         std::string layerName = layer->getName();
-        if (layer->getType() != LayerType::kCONSTANT && layer->getType() != LayerType::kCONCATENATION
-            && layer->getType() != LayerType::kSHAPE)
+        if (layer->getType() != LayerType::kCONSTANT &&
+            layer->getType() != LayerType::kCONCATENATION && 
+            layer->getType() != LayerType::kSHAPE)
         {
             layer->setPrecision(nvinfer1::DataType::kINT8);
         }
@@ -273,7 +274,7 @@ void setLayerPrecision(INetworkDefinition* network)
         for (int j = 0; j < layer->getNbOutputs(); ++j)
         {
             std::string tensorName = layer->getOutput(j)->getName();
-            if (layer->getOutput(j)->isExecutionTensor())
+            if (layer->getOutput(j)->isExecutionTensor() && layer->getType() != LayerType::kCONSTANT)  // Don't set INT8 output type for constants
             {
                 layer->setOutputType(j, nvinfer1::DataType::kINT8);
             }

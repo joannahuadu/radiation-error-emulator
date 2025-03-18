@@ -18,7 +18,7 @@ public:
     void printDetailed() const;
     void printLeafCounts() const;
     //在树上找出cnt 个multiplicity=num的错误，如num=3，cnt=2 表示2个3-MCU
-    std::vector<uintptr_t> getError(int num, int cnt, float x, float y, float z);
+    std::vector<uintptr_t> getError(int num, int cnt, float x);
     static std::string bitsetToHex(const std::string &bitstr);
     static std::string compressZeros(const std::string& str, int threshold);
 

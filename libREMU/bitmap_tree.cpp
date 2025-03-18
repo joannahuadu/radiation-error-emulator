@@ -52,7 +52,7 @@ void BitmapTree::initializeTree() {
 int BitmapTree::extractField(uintptr_t addr, const std::vector<int>& bits) {
     int value = 0;
     for (size_t i = 0; i < bits.size(); i++) {
-        value |= (((addr >> bits[i]) & 1UL) << i);
+        value |= (((addr >> bits[i]) & 1UL) << (bits[i]-bits[bits.size()-1]));
     }
     return value;
 }
@@ -235,197 +235,195 @@ float x: the probability of occurring in the same word-line, which means the sam
 float y: the probability of occurring in the same bit-line, which means the same column and adjacent row.
 float z: the probability of occurring in the stacking direction, which means the same column, same row and adjacent DQ.
 */
-std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, float z){
+std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
     std::vector<uintptr_t> errors;
     errors.clear();
     errors.reserve(num*cnt);
-    if(z!=0){
-        return errors;
-    }else{
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<uintptr_t> dqDist(0, (1UL << dq) - 1);        
 
-        // 定义逆映射函数：将各层索引转换回物理地址（注意：物理地址在映射前右移过 dq 位）
-        auto reverseMapping = [this](int ch, int b, int c, int r, uintptr_t dq_rand) -> uintptr_t {
-            uintptr_t addr = 0;
-            int field = ch;
-            // channel
-            for (size_t i = 0; i < map_channel.size(); i++) {
-                if (field & (1 << i))
-                    addr |= (1UL << map_channel[i]);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<uintptr_t> dqDist(0, (1UL << dq) - 1);        
+
+    // 定义逆映射函数：将各层索引转换回物理地址（注意：物理地址在映射前右移过 dq 位）
+    auto reverseMapping = [this](int ch, int b, int c, int r, uintptr_t dq_rand) -> uintptr_t {
+        uintptr_t addr = 0;
+        int field = ch;
+        // channel
+        for (size_t i = 0; i < map_channel.size(); i++) {
+            if (field & (1 << i))
+                addr |= (1UL << map_channel[map_channel.size()-1-i]);
+        }
+        // bank
+        field = b;
+        for (size_t i = 0; i < map_bank.size(); i++) {
+            if (field & (1 << i))
+                addr |= (1UL << map_bank[map_bank.size()-1-i]);
+        }
+        // column
+        field = c;
+        for (size_t i = 0; i < map_column.size(); i++) {
+            if (field & (1 << i))
+                addr |= (1UL << map_column[map_column.size()-1-i]);
+        }
+        // row
+        field = r;
+        for (size_t i = 0; i < map_row.size(); i++) {
+            if (field & (1 << i))
+                addr |= (1UL << map_row[map_row.size()-1-i]);
+        }
+        // 恢复 dq 位
+        addr = (addr << dq) | dq_rand;
+        return addr;
+    };      
+    /**
+    num==1的情况
+    利用各层（rt、channel、bank、column）的 leaf_count 信息，直接做分层随机采样，而不必遍历整个树。
+    基本思想是：
+    从全局叶子总数 rt.leaf_count 中随机选出一个目标下标。
+    依次在 channel、bank、column 这几层中，用当前子树的 leaf_count 来确定下标所在的子节点，然后在最底层（ColumnNode 的 row_bitmap 中）定位到具体的叶子。
+    重复采样，直到获得所需的 cnt 个唯一叶子（物理地址）。
+    */
+    if(num==1){
+        int totalLeaves = rt.leaf_count;
+        int seuFound = 0;
+        while(seuFound < cnt) {
+            // 在全局范围内随机选一个目标下标 [0, totalLeaves-1]
+            int target = std::uniform_int_distribution<int>(0, totalLeaves - 1)(gen);
+            int remaining = target;
+            int selected_ch = -1;
+            // 根据 channel 的 leaf_count 定位目标 channel
+            for (int ch = 0; ch < num_channels; ch++) {
+                if (remaining < rt.channels[ch].leaf_count) {
+                    selected_ch = ch;
+                    break;
+                } else {
+                    remaining -= rt.channels[ch].leaf_count;
+                }
             }
-            // bank
-            field = b;
-            for (size_t i = 0; i < map_bank.size(); i++) {
-                if (field & (1 << i))
-                    addr |= (1UL << map_bank[i]);
+            if(selected_ch < 0) continue;
+            
+            ChannelNode &chNode = rt.channels[selected_ch];
+            int selected_bank = -1;
+            // 在 channel 内，根据每个 bank 的 leaf_count 选择 bank
+            for (int b = 0; b < num_banks; b++) {
+                if (remaining < chNode.banks[b].leaf_count) {
+                    selected_bank = b;
+                    break;
+                } else {
+                    remaining -= chNode.banks[b].leaf_count;
+                }
             }
-            // column
-            field = c;
-            for (size_t i = 0; i < map_column.size(); i++) {
-                if (field & (1 << i))
-                    addr |= (1UL << map_column[i]);
-            }
-            // row
-            field = r;
-            for (size_t i = 0; i < map_row.size(); i++) {
-                if (field & (1 << i))
-                    addr |= (1UL << map_row[i]);
-            }
-            // 恢复 dq 位
-            addr = (addr << dq) | dq_rand;
-            return addr;
-        };      
-        /**
-        num==1的情况
-        利用各层（rt、channel、bank、column）的 leaf_count 信息，直接做分层随机采样，而不必遍历整个树。
-        基本思想是：
-        从全局叶子总数 rt.leaf_count 中随机选出一个目标下标。
-        依次在 channel、bank、column 这几层中，用当前子树的 leaf_count 来确定下标所在的子节点，然后在最底层（ColumnNode 的 row_bitmap 中）定位到具体的叶子。
-        重复采样，直到获得所需的 cnt 个唯一叶子（物理地址）。
-        */
-        if(num==1){
-            int totalLeaves = rt.leaf_count;
-            int seuFound = 0;
-            while(seuFound < cnt) {
-                // 在全局范围内随机选一个目标下标 [0, totalLeaves-1]
-                int target = std::uniform_int_distribution<int>(0, totalLeaves - 1)(gen);
-                int remaining = target;
-                int selected_ch = -1;
-                // 根据 channel 的 leaf_count 定位目标 channel
-                for (int ch = 0; ch < num_channels; ch++) {
-                    if (remaining < rt.channels[ch].leaf_count) {
-                        selected_ch = ch;
+            if(selected_bank < 0) continue;
+            
+            BankNode &bankNode = chNode.banks[selected_bank];
+            int selected_col = -1;
+            // 在 bank 内，根据每个 ColumnNode 的 leaf_count 选择 column
+            for (int c = 0; c < num_columns; c++) {
+                ColumnNode &colNode = bankNode.columns[c];
+                if (colNode.leaf_count > 0) {
+                    if (remaining < colNode.leaf_count) {
+                        selected_col = c;
                         break;
                     } else {
-                        remaining -= rt.channels[ch].leaf_count;
+                        remaining -= colNode.leaf_count;
                     }
                 }
-                if(selected_ch < 0) continue;
-                
-                ChannelNode &chNode = rt.channels[selected_ch];
-                int selected_bank = -1;
-                // 在 channel 内，根据每个 bank 的 leaf_count 选择 bank
+            }
+            if(selected_col < 0) continue;
+            
+            ColumnNode &colNode = bankNode.columns[selected_col];
+            int randStart = std::uniform_int_distribution<int>(0, 65535)(gen);
+            int selected_row = colNode.row_bitmap._Find_next(randStart);
+            if(selected_row==colNode.row_bitmap.size()) selected_row=colNode.row_bitmap._Find_first();
+            
+            // 根据选中的 channel、bank、column、row 得到物理地址
+            uintptr_t addr = reverseMapping(selected_ch, selected_bank, selected_col, selected_row, dqDist(gen));
+            errors.push_back(addr);
+            seuFound++;
+        }
+        return errors;
+    }else{
+        int totalBankLeaves = 0;
+        for (int ch = 0; ch < num_channels; ch++) {
+            for (int b = 0; b < num_banks; b++) {
+                totalBankLeaves += rt.channels[ch].banks[b].leaf_count;
+            }
+        }
+        int mcuFound = 0;
+        int MAX_ATTEMPTS = 128;
+        int Attempts = 0;
+        while(mcuFound < cnt && Attempts < MAX_ATTEMPTS*cnt){
+            Attempts++;
+            int target = std::uniform_int_distribution<int>(0, totalBankLeaves - 1)(gen);
+            int remaining = target;
+            int selected_ch = -1;
+            int selected_bank = -1;
+            for (int ch = 0; ch < num_channels; ch++) {
                 for (int b = 0; b < num_banks; b++) {
-                    if (remaining < chNode.banks[b].leaf_count) {
+                    if (remaining < rt.channels[ch].banks[b].leaf_count) {
+                        selected_ch = ch;
                         selected_bank = b;
                         break;
                     } else {
-                        remaining -= chNode.banks[b].leaf_count;
+                        remaining -= rt.channels[ch].banks[b].leaf_count;
                     }
                 }
-                if(selected_bank < 0) continue;
-                
-                BankNode &bankNode = chNode.banks[selected_bank];
-                int selected_col = -1;
-                // 在 bank 内，根据每个 ColumnNode 的 leaf_count 选择 column
-                for (int c = 0; c < num_columns; c++) {
-                    ColumnNode &colNode = bankNode.columns[c];
-                    if (colNode.leaf_count > 0) {
-                        if (remaining < colNode.leaf_count) {
-                            selected_col = c;
-                            break;
-                        } else {
-                            remaining -= colNode.leaf_count;
-                        }
-                    }
-                }
-                if(selected_col < 0) continue;
-                
-                ColumnNode &colNode = bankNode.columns[selected_col];
-                int selected_row = -1;
-                if (remaining > 0) selected_row = colNode.row_bitmap._Find_next(remaining - 1);
-                if(selected_row==colNode.row_bitmap.size()) selected_row=colNode.row_bitmap._Find_first();
-                if(selected_row < 0) continue;
-                
-                // 根据选中的 channel、bank、column、row 得到物理地址
-                uintptr_t addr = reverseMapping(selected_ch, selected_bank, selected_col, selected_row, dqDist(gen));
-                errors.push_back(addr);
-                seuFound++;
+                if(selected_bank >= 0) break;
             }
-            return errors;
-        }else{
-            int totalBankLeaves = 0;
-            for (int ch = 0; ch < num_channels; ch++) {
-                for (int b = 0; b < num_banks; b++) {
-                    totalBankLeaves += rt.channels[ch].banks[b].leaf_count;
-                }
+            ChannelNode &chNode = rt.channels[selected_ch];
+            BankNode &bankNode = chNode.banks[selected_bank];
+            //选定bank
+            //ADD: shape of MCU
+            std::uniform_real_distribution<double> ran(0, 1);
+            int x_num = 1;
+            int y_num = 0;
+            while(x_num + y_num < num){
+                double rand_num = ran(gen); 
+                if (rand_num >= (1-x)) x_num+=1;
+                else y_num+=1;
             }
-            int mcuFound = 0;
-            int MAX_ATTEMPTS = 128;
-            int Attempts = 0;
-            while(mcuFound < cnt && Attempts < MAX_ATTEMPTS*cnt){
-                Attempts++;
-                int target = std::uniform_int_distribution<int>(0, totalBankLeaves - 1)(gen);
-                int remaining = target;
-                int selected_ch = -1;
-                int selected_bank = -1;
-                for (int ch = 0; ch < num_channels; ch++) {
-                    for (int b = 0; b < num_banks; b++) {
-                        if (remaining < rt.channels[ch].banks[b].leaf_count) {
-                            selected_ch = ch;
-                            selected_bank = b;
-                            break;
-                        } else {
-                            remaining -= rt.channels[ch].banks[b].leaf_count;
-                        }
-                    }
-                    if(selected_bank >= 0) break;
-                }
-                ChannelNode &chNode = rt.channels[selected_ch];
-                BankNode &bankNode = chNode.banks[selected_bank];
-                //选定bank
+            // fix: segmetation fault: x_num>0
+            std::vector<int> foundColPos(x_num, 0);
+            for(int j=0;j<y_num;++j)foundColPos[rand() % x_num]+=1; //fix
 
-                int x_num=static_cast<int>(std::ceil(num * x));
-                int y_num=num-x_num;
-                std::bitset<1024> foundCols = bankNode.column_bitmap;
-                std::bitset<65536> foundRows;
-                for (int i = 1; i < x_num; i++) {
-                    foundCols &= (bankNode.column_bitmap >> i);
-                }
-                if(foundCols.none())continue;
-                std::vector<int> foundColPos;
-                foundColPos.reserve(x_num);
-                int randStart = std::uniform_int_distribution<int>(0, 1023)(gen);
-                for(int col=randStart;col!=foundCols.size();col=foundCols._Find_next(col)){
-                    foundRows.set();
+            std::bitset<1024> foundCols = bankNode.column_bitmap;
+            std::bitset<65536> foundRows;
+            for (int i = 1; i < x_num; i++) {
+                foundCols &= (bankNode.column_bitmap << i); 
+            }
+            if(foundCols.none())continue; //如果没有相邻列，则直接下一个target 
+            
+            int randStart = std::uniform_int_distribution<int>(0, 1023)(gen);
+            for(int col=foundCols._Find_next(randStart);col!=foundCols.size();col=foundCols._Find_next(col)){
+                foundRows.set();
+                for(int i=0;i<x_num;i++){
+                    foundRows &= (bankNode.columns[i+col].row_bitmap);
+                    for(int j=1;j<=foundColPos[i];j++){
+                        // TODO: some shapes are not included, might move right >>j and selected_row-j
+                        foundRows&=(bankNode.columns[i+col].row_bitmap<<j); // fix: should move left
+                    }
+                } 
+                // std::cout << foundRows << " " << foundRows.any() << std::endl;
+                //TODO: fix why cannot find row, but foundRows.any()=true? 这个bug出现在很多相邻row的情况，导致最后<total_bit
+                if(foundRows.any()){ //如果col的相邻列没有相同行，则下一个col
+                    randStart = std::uniform_int_distribution<int>(0, 65535)(gen);
+                    int selected_row = foundRows._Find_next(randStart); //fix: 排除randStart=0, selected_row=-1
+                    if(selected_row==foundRows.size()) selected_row=foundRows._Find_first();
+                    int selected_dq=dqDist(gen);
                     for(int i=0;i<x_num;i++){
-                        foundRows &= (bankNode.columns[i+col].row_bitmap);
-                    } 
-                    
-                    if(foundRows.any()){
-                        int selected_row = -1;
-                        randStart = std::uniform_int_distribution<int>(0, 65535)(gen);
-                        if (randStart > 0) selected_row = foundRows._Find_next(randStart);
-                        if(selected_row==foundRows.size()) selected_row=foundRows._Find_first();
-                        int selected_dq=dqDist(gen);
-                        for(int i=0;i<x_num;i++){
-                            uintptr_t addr=reverseMapping(selected_ch, selected_bank, col+i, selected_row, selected_dq);
+                        uintptr_t addr=reverseMapping(selected_ch, selected_bank, col+i, selected_row, selected_dq);
+                        errors.push_back(addr);
+                        for(int j=1;j<=foundColPos[i];j++){      
+                            // std::cout << "[" << i <<", " << j << "]: " << selected_bg << " "<< selected_bank << " " << col+i << " " << selected_row+j << " " << selected_dq << std::endl;                 
+                            uintptr_t addr=reverseMapping(selected_ch, selected_bank, col+i, selected_row+j , selected_dq);
                             errors.push_back(addr);
                         }
-                        mcuFound+=x_num;
-                        for(int i=0;i<x_num;i++){
-                            foundRows.set();
-                            for(int j=0;j<y_num;j++){
-                                foundRows &=(bankNode.columns[i+col].row_bitmap>>j);
-                            }
-                            if(foundRows.none())continue;
-                            randStart = std::uniform_int_distribution<int>(0, 65535)(gen);
-                            if (randStart > 0) selected_row = foundRows._Find_next(randStart);
-                            if(selected_row==foundRows.size()) selected_row=foundRows._Find_first();                       
-
-                            for(int j=0;j<y_num;j++){
-                                uintptr_t addr=reverseMapping(selected_ch, selected_bank, col+i, selected_row+j , selected_dq);
-                                errors.push_back(addr);
-                            }
-                            mcuFound+=y_num;
-                        }
-                        break;
                     }
+                    mcuFound+=1;
+                    break;
                 }
             }
         }
-        return errors;
     }
+    return errors;
 }
