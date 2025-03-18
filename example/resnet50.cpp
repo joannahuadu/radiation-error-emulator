@@ -27,7 +27,6 @@ const std::array<float, 3> IMAGENET_DEFAULT_STD = {0.229f, 0.224f, 0.225f};
 
 using namespace nvinfer1;
 static Logger gLogger;  
-IRuntime* gRuntime = nullptr; // Add at global scope
 
 // Load weights from files shared with TensorRT samples.
 // TensorRT weight files have a simple space delimited format:
@@ -263,20 +262,19 @@ void setLayerPrecision(INetworkDefinition* network)
     {
         auto layer = network->getLayer(i);
         std::string layerName = layer->getName();
-        
-        // Skip setting INT8 precision for constants, shape operations, and concatenation
-        if (layer->getType() != LayerType::kCONSTANT && 
-            layer->getType() != LayerType::kCONCATENATION &&
+        if (layer->getType() != LayerType::kCONSTANT &&
+            layer->getType() != LayerType::kCONCATENATION && 
             layer->getType() != LayerType::kSHAPE)
         {
             layer->setPrecision(nvinfer1::DataType::kINT8);
         }
-        
+        if (layer->getType() == LayerType::kCONVOLUTION){
+            IConvolutionLayer * cLyr = static_cast<IConvolutionLayer*>(layer);
+        }
         for (int j = 0; j < layer->getNbOutputs(); ++j)
         {
             std::string tensorName = layer->getOutput(j)->getName();
-            if (layer->getOutput(j)->isExecutionTensor() && 
-                layer->getType() != LayerType::kCONSTANT)  // Don't set INT8 output type for constants
+            if (layer->getOutput(j)->isExecutionTensor() && layer->getType() != LayerType::kCONSTANT)  // Don't set INT8 output type for constants
             {
                 layer->setOutputType(j, nvinfer1::DataType::kINT8);
             }
@@ -287,12 +285,10 @@ void setLayerPrecision(INetworkDefinition* network)
 // Creat the engine using only the API and not any parser.
 ICudaEngine* createEngine(unsigned int maxBatchSize, IBuilder* builder, IBuilderConfig* config, DataType dt, std::string& wts_name)
 {
-    // INetworkDefinition* network = builder->createNetworkV2(0U);
-    INetworkDefinition* network = builder->createNetworkV2(1U << static_cast<int>(NetworkDefinitionCreationFlag::kEXPLICIT_BATCH));
+    INetworkDefinition* network = builder->createNetworkV2(0U);
 
-    // Create input tensor with explicit batch dimension
-    // Change from Dims3{3, INPUT_H, INPUT_W} to Dims4 with batch dimension
-    ITensor* data = network->addInput(INPUT_BLOB_NAME, dt, Dims4{maxBatchSize, 3, INPUT_H, INPUT_W});
+    // Create input tensor of shape { 3, INPUT_H, INPUT_W } with name INPUT_BLOB_NAME
+    ITensor* data = network->addInput(INPUT_BLOB_NAME, dt, Dims3{3, INPUT_H, INPUT_W});
     assert(data);
 
     std::map<std::string, Weights> weightMap = loadWeights(wts_name);
@@ -340,65 +336,19 @@ ICudaEngine* createEngine(unsigned int maxBatchSize, IBuilder* builder, IBuilder
     assert(pool2);
     pool2->setStrideNd(DimsHW{1, 1});
     
-    // Get the output tensor from pooling layer
-    ITensor* poolOutput = pool2->getOutput(0);
-    
-    // Create a reshape layer to convert from 4D [batch,channels,height,width] to 2D [batch,features]
-    // The -1 in reshape dimensions automatically infers the correct size
-    IShuffleLayer* reshapeLayer = network->addShuffle(*poolOutput);
-    reshapeLayer->setReshapeDimensions(Dims2(-1, 2048)); // 2048 = 512 * 4 from bottleneck
-    
-    // Use the reshaped output for matrix multiplication
-    ITensor* flattenedInput = reshapeLayer->getOutput(0);
-    
-    // Create constant layers for weights and bias
-    IConstantLayer* weightConstant = network->addConstant(Dims2(OUTPUT_SIZE, 2048), weightMap["fc.weight"]);
-    IConstantLayer* biasConstant = network->addConstant(Dims2(1, OUTPUT_SIZE), weightMap["fc.bias"]);
-    
-    // Matrix multiplication (input * weights^T)
-    IMatrixMultiplyLayer* matMul = network->addMatrixMultiply(
-        *flattenedInput, 
-        MatrixOperation::kNONE,
-        *weightConstant->getOutput(0), 
-        MatrixOperation::kTRANSPOSE
-    );
-    
-    // Add bias
-    auto fc1 = network->addElementWise(
-        *matMul->getOutput(0),
-        *biasConstant->getOutput(0),
-        ElementWiseOperation::kSUM
-    );
+    IFullyConnectedLayer* fc1 = network->addFullyConnected(*pool2->getOutput(0), OUTPUT_SIZE, weightMap["fc.weight"], weightMap["fc.bias"]);
     assert(fc1);
     
     // fc1->getOutput(0)->setName(OUTPUT_BLOB_NAME);
     // std::cout << "set name out" << std::endl;
     // network->markOutput(*fc1->getOutput(0));
 
-    ISoftMaxLayer* softmax_layer = network->addSoftMax(*fc1->getOutput(0));
+    ISoftMaxLayer* softmax_layer=network->addSoftMax(*fc1->getOutput(0));
     assert(softmax_layer);
     
-    // Set softmax output precision to FP32 explicitly
-    softmax_layer->setPrecision(DataType::kFLOAT);
-    softmax_layer->setOutputType(0, DataType::kFLOAT);
-    
-    // Set the axis for softmax explicitly (important!)
-    softmax_layer->setAxes(1 << 1);  // Apply softmax along dimension 1 (class dimension)
-    
-    // For debugging, mark softmax output as a network output with a specific name
-    // softmax_layer->getOutput(0)->setName("softmax_output");
-    // network->markOutput(*softmax_layer->getOutput(0));
-    
-    // Configure TopK with explicit axis
-    // 0x02 = binary 10 = reduce along dimension 1 (class dimension)
-    ITopKLayer* prob_ans = network->addTopK(*softmax_layer->getOutput(0), TopKOperation::kMAX, 1, 0x02);
+    ITopKLayer* prob_ans = network->addTopK(*softmax_layer->getOutput(0), TopKOperation::kMAX,1,1);//?
     assert(prob_ans);
-    
-    // Set TopK output precision to FP32 explicitly 
-    prob_ans->setPrecision(DataType::kFLOAT);
-    prob_ans->setOutputType(0, DataType::kFLOAT);
-    prob_ans->setOutputType(1, DataType::kINT32); // Index output stays INT32
-    
+
     prob_ans->getOutput(0)->setName(OUTPUT_BLOB_NAME);
     prob_ans->getOutput(1)->setName(OUTPUT_BLOB_NAME_INDEX);
     network->markOutput(*prob_ans->getOutput(0)); 
@@ -412,47 +362,26 @@ ICudaEngine* createEngine(unsigned int maxBatchSize, IBuilder* builder, IBuilder
         return nullptr;
     }
 
-    // builder->setMaxBatchSize(maxBatchSize);
-    // config->setMaxWorkspaceSize(1 << 30);
+    builder->setMaxBatchSize(maxBatchSize);
+    config->setMaxWorkspaceSize(1 << 30);
     setLayerPrecision(network);
     if (!setDynamicRange(network))
     {
         std::cout << "Unable to set per-tensor dynamic range." << std::endl;
         return nullptr;
     }
-    
-    // Update deprecated workspace configuration
-    config->setMemoryPoolLimit(MemoryPoolType::kWORKSPACE, 1 << 30);  // 1GB workspace
-    
-    // Modify INT8 settings to avoid quantization errors with constant tensors
     config->setFlag(BuilderFlag::kINT8);
     config->setInt8Calibrator(nullptr);
-    
-    // Either remove this flag to be less strict about precision
-    // config->setFlag(BuilderFlag::kPREFER_PRECISION_CONSTRAINTS);
-    
-    // Or use TensorFormat::kLINEAR for the I/O formats to be explicit about wanting FP32 I/O with INT8 internals
     config->setFlag(BuilderFlag::kPREFER_PRECISION_CONSTRAINTS);
-    config->clearFlag(BuilderFlag::kDIRECT_IO); // This allows automatic precision conversion
-    
-    // Replace the deprecated buildEngineWithConfig with the new API
-    IHostMemory* serializedEngine = builder->buildSerializedNetwork(*network, *config);
-    IRuntime* runtime = createInferRuntime(gLogger);
-    gRuntime = runtime; // Store for later deletion
-    ICudaEngine* engine = runtime->deserializeCudaEngine(serializedEngine->data(), serializedEngine->size());
-    // serializedEngine->destroy();  // This method is still valid
-    
+
+    ICudaEngine* engine = builder->buildEngineWithConfig(*network, *config);
     std::cout << "build out" << std::endl;
-    // Remove network->destroy() - no longer needed
+    network->destroy();
     for (auto& mem : weightMap)
     {
         free((void*) (mem.second.values));
     }
-    
-    // Clean up the runtime using delete instead of destroy()
-    delete serializedEngine;
-    delete network;
-    
+
     return engine;
 }
 
@@ -472,11 +401,9 @@ void APIToModel(unsigned int maxBatchSize, IHostMemory** modelStream, std::strin
     (*modelStream) = engine->serialize();
 
     // Close everything down
-    delete engine;
-    delete config;
-    delete builder;
-    delete gRuntime; // Clean up the runtime here after the engine is gone
-    gRuntime = nullptr;
+    engine->destroy();
+    config->destroy();
+    builder->destroy();
 }
 
 int main(int argc, char** argv)
@@ -497,8 +424,7 @@ int main(int argc, char** argv)
             return -1;
         }
         p.write(reinterpret_cast<const char*>(modelStream->data()), modelStream->size());
-        // modelStream->destroy();
-        delete modelStream;
+        modelStream->destroy();
         return 1;
     } else {
         std::cerr << "arguments not right!" << std::endl;

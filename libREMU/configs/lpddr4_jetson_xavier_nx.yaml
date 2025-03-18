@@ -1,0 +1,21 @@
+dram:
+  type: LPDDR4
+  hardware_capacity: 17179869184  # 16GB in bytes
+  hierarchy:
+    channel_bits: 1
+    bank_bits: 3
+    column_bits: 10
+    row_bits: 16
+  interface:
+    DQ: 4
+  extensions:
+    row_xor_interleaving: true
+
+mapping:
+  scheme: "CUSTOM"
+  bit_mapping:
+    # All direct mapping (no XOR)
+    column: [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+    channel: [10]
+    bank: [11, 12, 13] #[7, 6, 5] 
+    row: [29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14]

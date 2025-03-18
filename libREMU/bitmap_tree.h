@@ -18,16 +18,16 @@ public:
     void printDetailed() const;
     void printLeafCounts() const;
     //在树上找出cnt 个multiplicity=num的错误，如num=3，cnt=2 表示2个3-MCU
-    std::vector<uintptr_t> getError(int num, int cnt, float x, float y, float z);
+    std::vector<uintptr_t> getError(int num, int cnt, float x);
     static std::string bitsetToHex(const std::string &bitstr);
     static std::string compressZeros(const std::string& str, int threshold);
 
 private:
     // column 节点：叶节点，不再有子节点，
-    // 同时维护一个 bitset，用于标记 row 的状态（长度为 2^(row_bits)，例如 2^17=131072）
+    // 同时维护一个 bitset，用于标记 row 的状态（长度为 2^(row_bits)，例如 2^16=65536）
     struct ColumnNode {
         int index;  // 列号
-        std::bitset<131072> row_bitmap; 
+        std::bitset<65536> row_bitmap; 
         int leaf_count; // 此 column 下已置 1 的 row 数
 
         ColumnNode(int idx) : index(idx), leaf_count(0) {}
@@ -44,39 +44,39 @@ private:
         BankNode(int idx, int num_columns);
     };
 
-    // bankgroup 节点：下有最多 2^(bank_bits) 个 bank 节点，同时维护一个叶子计数，
-    // 表示该 bankgroup 下（bank 层）的更新数
-    struct BankGroupNode {
+    // channel 节点：下有最多 2^(bank_bits) 个 bank 节点，同时维护一个叶子计数，
+    // 表示该 channel 下（bank 层）的更新数
+    struct ChannelNode {
         int index;
         std::vector<BankNode> banks; 
         int leaf_count;
 
-        BankGroupNode(int idx, int num_banks, int num_columns);
+        ChannelNode(int idx, int num_banks, int num_columns);
     };
 
-    // 虚根节点，其下存放所有 bankgroup 节点
-    //std::vector<BankGroupNode> bankgroups;
+    // 虚根节点，其下存放所有 channel 节点
+    //std::vector<ChannelNode> channels;
     struct rtNode {
-        std::vector<BankGroupNode> bankgroups; 
+        std::vector<ChannelNode> channels; 
         int leaf_count; 
         rtNode() : leaf_count(0) {}
-        rtNode(int num_banks, int num_bankgroups, int num_columns);
+        rtNode(int num_banks, int num_channels, int num_columns);
     }rt;
 
     // 从 YAML 文件中解析的映射规则
     int dq; // DQ 值：物理地址在映射前先右移 dq 位
     std::vector<int> map_column;   
-    std::vector<int> map_bankgroup; 
+    std::vector<int> map_channel; 
     std::vector<int> map_bank;    
     std::vector<int> map_row;     
 
-    // 从 dram->hierarchy 中解析得到的各层位宽（case只用 bankgroup、bank、column、row 四层）
-    int bankgroup_bits;
+    // 从 dram->hierarchy 中解析得到的各层位宽（case只用 channel、bank、column、row 四层）
+    int channel_bits;
     int bank_bits;
     int column_bits;
     int row_bits;
 
-    int num_bankgroups;
+    int num_channels;
     int num_banks;
     int num_columns;
     int num_rows;

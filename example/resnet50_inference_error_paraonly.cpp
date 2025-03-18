@@ -186,11 +186,11 @@ int main(int argc, char** argv)
         // cudaSetDevice(device);
     } else {
         std::cerr << "arguments not right!" << std::endl;
-        std::cerr << "sudo ./resnet50_inference_error -d [.engine] [images_cfg.txt] [labels_dir.txt] [bitflip] [bitidx] [device] [lineidx] [time]// deserialize plan file and run inference" << std::endl;
+        std::cerr << "sudo ./resnet50_inference_error_paraonly -d [.engine] [images_cfg.txt] [labels_dir.txt] [bitflip] [bitidx] [device] [lineidx] [time]// deserialize plan file and run inference" << std::endl;
         return -1;
     }
 
-    std::string logFileName = engine_name + "_" +std::to_string(bitflip)+"_" +  std::to_string(bitidx) + "_" + std::to_string(time) + ".txt";
+    std::string logFileName = engine_name + "_" +std::to_string(bitflip)+"_" +  std::to_string(bitidx) + "_abort796616_"  + std::to_string(time) + ".txt";
     std::ofstream logfile(logFileName);
     if (!logfile.is_open()) {
         std::cerr << "Failed to open log file" << std::endl;
@@ -227,7 +227,7 @@ int main(int argc, char** argv)
         std::map<int, int> errorMap = loadErrors(error_file, lineidx); 
         size_t dram_capacity_gb=16;
         MemUtils memUtils(dram_capacity_gb);
-        MemUtils::get_error_Va_tree(&memUtils, Vaddr+300, size-300, logfile, bitflip, bitidx, tree_mapping, errorMap);
+        MemUtils::get_error_Va_tree(&memUtils, Vaddr+300, size-796616, logfile, bitflip, bitidx, tree_mapping, errorMap);
     }
 
     ICudaEngine* engine = runtime->deserializeCudaEngine(trtModelStream, size, nullptr);
