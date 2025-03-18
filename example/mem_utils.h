@@ -11,6 +11,7 @@
 struct Vmem {
     uintptr_t vaddr; /**< The virtual address. */  
     uintptr_t paddr; /**< The physical address. */  
+    size_t z;
 };
 
 struct Pmem {
@@ -71,7 +72,7 @@ public:
     uintptr_t D2P(uintptr_t da);
 
     // static std::vector<Vmem> get_error_Va(MemUtils* self, uintptr_t Vaddr, size_t size, std::ofstream& logfile, int error_bit_num, int flip_bit, const std::string& cfg, const std::string& mapping, const std::map<int,int>& errorMap);
-    static std::vector<Vmem> get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, size_t size, std::ofstream& logfile, int error_bit_num, int flip_bit, const std::string& mapping, const std::map<int,int>& errorMap);
+    static std::vector<Vmem> get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, size_t size, std::ofstream& logfile, int error_bit_num, int flip_bit, const std::string& mapping, const std::map<int,int>& errorMap, double z=0);
 
     static std::vector<uintptr_t> get_random_error_Va(uintptr_t Vaddr, size_t size, std::ofstream& logfile, int error_bit_num, int flip_bit);
     /**
@@ -89,7 +90,7 @@ private:
     /**
      * Verify whether the physical address is legal in ROI.
     */
-    static std::vector<Vmem> getValidVA_in_pa(MemUtils* self, const std::vector<uintptr_t>& daddrs, const std::vector<Pmem>& pmems);
+    static std::vector<Vmem> getValidVA_in_pa(MemUtils* self, const std::vector<uintptr_t>& daddrs, const std::vector<Pmem>& pmems, int num, int cntz);
     /**
      * Obtain the minimum address in the list of physical blocks.
     */

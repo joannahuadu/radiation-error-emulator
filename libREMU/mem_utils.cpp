@@ -22,10 +22,10 @@ bool Pmem::hasV(uintptr_t Vaddr) const {return Vaddr >= s_Vaddr && Vaddr <= t_Va
 Vmem Pmem::PtoV(uintptr_t Paddr) const {
     if (!hasP(Paddr)) {
         std::cerr << "Physical address not in the range of this Pmem." << std::endl;
-        return {0, 0};
+        return {0, 0, 0};
     }
     uintptr_t vaddr = s_Vaddr + (Paddr - s_Paddr);
-    return {vaddr, Paddr};
+    return {vaddr, Paddr, 0};
 }
 
 Vmem Pmem::VtoP(uintptr_t Vaddr) const {
@@ -58,7 +58,7 @@ uintptr_t random_uintptr(int seed, uintptr_t start, uintptr_t end) {
     std::uniform_int_distribution<uintptr_t> dist(start, end);
     return dist(rng);
 }
-std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, size_t size, std::ofstream& logfile, int error_bit_num, int flip_bit, const std::string& mapping, const std::map<int,int>& errorMap) {
+std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, size_t size, std::ofstream& logfile, int error_bit_num, int flip_bit, const std::string& mapping, const std::map<int,int>& errorMap, double z) {
     uintptr_t page_size = sysconf(_SC_PAGE_SIZE);
     std::vector<Pmem> pmems = getPmems(self, Vaddr, size, page_size);
     
@@ -90,15 +90,24 @@ std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, s
     for (const auto& pair : errorMap) {
         int num=pair.first;
         int cnt=pair.second;
+        int cntz = 0;
         std::vector<uintptr_t> errors;
-        errors.reserve(cnt*num);
-        errors = bt_tree.getError(num, cnt, 0.8, 0.2, 0);
+        // errors.reserve(cnt*num);
+        if(z>0 & num>1) {
+            cntz = static_cast<int>(std::round(cnt * z));
+            std::cout << "cntz: " << cntz << std::endl;
+            std::vector<uintptr_t> errors1, errors2;
+            if(cntz>0) errors1 = bt_tree.getError(1, cntz, 0.8);
+            if((cnt-cntz)>0) errors2 = bt_tree.getError(num, cnt-cntz, 0.8);
+            errors.insert(errors.end(), errors1.begin(), errors1.end());
+            errors.insert(errors.end(), errors2.begin(), errors2.end());
+        }else errors = bt_tree.getError(num, cnt, 0.8);
         // std::cout<<"error daddr: ";
         // for(auto err:errors)std::cout<<std::hex<<err<<" ";
         // std::cout<<std::endl;
         std::vector<Vmem> Verr;
-        Verr.reserve(cnt*num);
-        Verr=getValidVA_in_pa(self, errors, pmems);  
+        // Verr.reserve(cnt*num);
+        Verr=getValidVA_in_pa(self, errors, pmems, num, cntz);  
         // std::cout<<"error vaddr: ";
         // for(auto err:Verr)std::cout<<std::hex<<err.vaddr<<" "<<std::hex<<err.paddr<<std::endl;
         // std::cout<<std::endl;
@@ -106,17 +115,22 @@ std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, s
     }
     
     for(const auto& vmem: total_Verr){
-        logfile << "Error PA: " << std::hex << vmem.paddr << ", mapVA: " <<std::hex << vmem.vaddr << std::endl;
-        // break;
+        logfile << "Error PA: " << std::hex << vmem.paddr << ", mapVA: " <<std::hex << vmem.vaddr << ", dq: " << std::dec << vmem.z << std::endl;
+        break;
     } 
 
     for(auto vmem : total_Verr){
         unsigned char* byteAddress = reinterpret_cast<unsigned char*>(vmem.vaddr);
         std::bitset<8> bitsBefore(*byteAddress);
-        *byteAddress ^= 1 << flip_bit;
+        if (vmem.z > 0) {
+            unsigned char mask = ((1 << vmem.z) - 1) << (flip_bit - vmem.z + 1);
+            *byteAddress ^= mask;
+        }else{
+            *byteAddress ^= 1 << flip_bit;
+        }
         std::bitset<8> bitsAfter(*byteAddress); 
         // logfile << bitsBefore << " -> " << bitsAfter << std::endl; // Print the binary representation
-    }    
+    }
     return total_Verr;
 }
 //random error
@@ -381,13 +395,15 @@ Pmem MemUtils::get_block_in_pmems(MemUtils* self, uintptr_t Vaddr, size_t size, 
     return {};
 }
 
-std::vector<Vmem> MemUtils::getValidVA_in_pa(MemUtils* self, const std::vector<uintptr_t>& daddrs, const std::vector<Pmem>& pmems){
+std::vector<Vmem> MemUtils::getValidVA_in_pa(MemUtils* self, const std::vector<uintptr_t>& daddrs, const std::vector<Pmem>& pmems, int num, int cntz){
     std::vector<Vmem> vmems;
-    for (uintptr_t daddr : daddrs) { 
-        uintptr_t paddr = self->D2P(daddr);
+    // for (uintptr_t daddr : daddrs) { 
+    for (size_t i=0;i<daddrs.size();++i) {
+        uintptr_t paddr = self->D2P(daddrs[i]);
         for (const auto& pmem : pmems) {
             if (pmem.hasP(paddr)) { 
                 Vmem vmem = pmem.PtoV(paddr); 
+                vmem.z = (i < cntz) ? num : 0;
                 if (vmem.vaddr != 0) { 
                     vmems.push_back(vmem); 
                 }

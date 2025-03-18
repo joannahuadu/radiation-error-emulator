@@ -236,7 +236,7 @@ float x: the probability of occurring in the same word-line, which means the sam
 float y: the probability of occurring in the same bit-line, which means the same column and adjacent row.
 float z: the probability of occurring in the stacking direction, which means the same column, same row and adjacent DQ.
 */
-std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, float z){
+std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
     std::vector<uintptr_t> errors;
     errors.clear();
     errors.reserve(num*cnt);
@@ -332,10 +332,9 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
             if(selected_col < 0) continue;
             
             ColumnNode &colNode = bankNode.columns[selected_col];
-            int selected_row = -1;
             // fix: 让row的选择更随机
             int randStart = std::uniform_int_distribution<int>(0, 131071)(gen);
-            if (randStart > 0) selected_row = colNode.row_bitmap._Find_next(randStart);
+            int selected_row = colNode.row_bitmap._Find_next(randStart); //fix: 排除randStart=0, selected_row=-1
             if(selected_row==colNode.row_bitmap.size()) selected_row=colNode.row_bitmap._Find_first();
             // std::cout << "["  << seuFound << "]: " << selected_bg << " "<< selected_bank << " " << selected_col << " " << selected_row  << std::endl;
             // 根据选中的 bankgroup、bank、column、row 得到物理地址
@@ -382,12 +381,12 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
             int y_num = 0;
             while(x_num + y_num < num){
                 double rand_num = ran(gen); 
-                if (rand_num >= 0.2) x_num+=1;
+                if (rand_num >= (1-x)) x_num+=1;
                 else y_num+=1;
             }
             // fix: segmetation fault: x_num>0
             std::vector<int> foundColPos(x_num, 0);
-            for(int j=0;j<y_num;++j)foundColPos[target % x_num]+=1;
+            for(int j=0;j<y_num;++j)foundColPos[rand() % x_num]+=1; //fix
             
             //Start select.
             std::bitset<1024> foundCols = bankNode.column_bitmap;
@@ -401,16 +400,16 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x, float y, 
                 foundRows.set();
                 for(int i=0;i<x_num;i++){
                     foundRows &= (bankNode.columns[i+col].row_bitmap);
-                    for(int j=0;j<foundColPos[i];j++){
+                    for(int j=1;j<=foundColPos[i];j++){
                         // TODO: some shapes are not included, might move right >>j and selected_row-j
                         foundRows&=(bankNode.columns[i+col].row_bitmap<<j); // fix: should move left
                     }
                 }
                 // std::cout << foundRows << " " << foundRows.any() << std::endl;
+                //TODO: fix why cannot find row, but foundRows.any()=true? 这个bug出现在很多相邻row的情况，导致最后<total_bit
                 if(foundRows.any()){ //如果col的相邻列没有相同行，则下一个col
-                    int selected_row = -1;
                     randStart = std::uniform_int_distribution<int>(0, 131071)(gen);
-                    if (randStart > 0) selected_row = foundRows._Find_next(randStart);
+                    int selected_row = foundRows._Find_next(randStart); //fix: 排除randStart=0, selected_row=-1
                     if(selected_row==foundRows.size()) selected_row=foundRows._Find_first();
                     int selected_dq=dqDist(gen);
                     for(int i=0;i<x_num;i++){

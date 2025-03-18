@@ -1,3 +1,6 @@
 **libREMU/build**
 **example/build**
 *.wts
+run*
+error*
+MCU*

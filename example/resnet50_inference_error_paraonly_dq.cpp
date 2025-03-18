@@ -213,7 +213,8 @@ int main(int argc, char** argv)
     int device;
     int lineidx;
     int time;
-    if (argc == 10 && std::string(argv[1]) == "-d") {
+    double dq;
+    if (argc == 11 && std::string(argv[1]) == "-d") {
         engine_name = std::string(argv[2]);
         images_cfg = std::string(argv[3]);
         labels_dir = std::string(argv[4]);
@@ -222,14 +223,15 @@ int main(int argc, char** argv)
         device = std::stoi(argv[7]);
         lineidx = std::stoi(argv[8]);
         time = std::stoi(argv[9]);
+        dq = std::stod(argv[10]);
         // cudaSetDevice(device);
     } else {
         std::cerr << "arguments not right!" << std::endl;
-        std::cerr << "./resnet50_inference_error_paraonly -d [.engine] [images_cfg.txt] [labels_dir.txt] [bitflip] [bitidx] [device] [lineidx] [time]// deserialize plan file and run inference" << std::endl;
+        std::cerr << "./resnet50_inference_error_paraonly_dq -d [.engine] [images_cfg.txt] [labels_dir.txt] [bitflip] [bitidx] [device] [lineidx] [time] [dq]// deserialize plan file and run inference" << std::endl;
         return -1;
     }
 
-    std::string logFileName = engine_name + "_" +std::to_string(bitflip)+"_" +  std::to_string(bitidx) + "_abort796616_"  + std::to_string(time) + ".txt";
+    std::string logFileName = engine_name + "_" +std::to_string(bitflip)+"_" +  std::to_string(bitidx) + "_abort796616_" + std::to_string(dq) + "_" + std::to_string(time) + ".txt";
     std::ofstream logfile(logFileName);
     if (!logfile.is_open()) {
         std::cerr << "Failed to open log file" << std::endl;
@@ -269,7 +271,7 @@ int main(int argc, char** argv)
         std::map<int, int> errorMap = loadErrors(error_file, lineidx); 
         size_t dram_capacity_gb=64;
         MemUtils memUtils(dram_capacity_gb);
-        MemUtils::get_error_Va_tree(&memUtils, Vaddr+300, size-796616, logfile, bitflip, bitidx, tree_mapping, errorMap);
+        MemUtils::get_error_Va_tree(&memUtils, Vaddr+300, size-796616, logfile, bitflip, bitidx, tree_mapping, errorMap, dq);
     }
     
 

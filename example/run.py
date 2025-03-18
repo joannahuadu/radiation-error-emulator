@@ -7,7 +7,7 @@ def run_resnet50(times, t):
     accuracies = []
     total_times = []
     total_accumulated_time = 0
-    total_bit=100
+    total_bit=600
     flip_bit=7
     log_file="0317_{0}_{1}_int8_clean_abort300_{2}.txt".format(total_bit, flip_bit, t)
     with open(log_file, 'w') as log:
