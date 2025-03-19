@@ -239,11 +239,11 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
     std::vector<uintptr_t> errors;
     errors.clear();
     errors.reserve(num*cnt);
-
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<uintptr_t> dqDist(0, (1UL << dq) - 1);        
-
+    std::uniform_int_distribution<uintptr_t> dqDist(0, (1UL << dq) - 1);  
+    int MAX_ATTEMPTS = 20;
+    int Attempts = 0;      
     // 定义逆映射函数：将各层索引转换回物理地址（注意：物理地址在映射前右移过 dq 位）
     auto reverseMapping = [this](int ch, int b, int c, int r, uintptr_t dq_rand) -> uintptr_t {
         uintptr_t addr = 0;
@@ -286,7 +286,9 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
     if(num==1){
         int totalLeaves = rt.leaf_count;
         int seuFound = 0;
-        while(seuFound < cnt) {
+        Attempts = 0;
+        while(seuFound < cnt &&  Attempts < MAX_ATTEMPTS*cnt) {
+            Attempts++;
             // 在全局范围内随机选一个目标下标 [0, totalLeaves-1]
             int target = std::uniform_int_distribution<int>(0, totalLeaves - 1)(gen);
             int remaining = target;
@@ -335,13 +337,12 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
             int randStart = std::uniform_int_distribution<int>(0, 65535)(gen);
             int selected_row = colNode.row_bitmap._Find_next(randStart);
             if(selected_row==colNode.row_bitmap.size()) selected_row=colNode.row_bitmap._Find_first();
-            
+            // std::cout << "["  << seuFound << "]: " << selected_bg << " "<< selected_bank << " " << selected_col << " " << selected_row  << std::endl;
             // 根据选中的 channel、bank、column、row 得到物理地址
             uintptr_t addr = reverseMapping(selected_ch, selected_bank, selected_col, selected_row, dqDist(gen));
             errors.push_back(addr);
             seuFound++;
         }
-        return errors;
     }else{
         int totalBankLeaves = 0;
         for (int ch = 0; ch < num_channels; ch++) {
@@ -350,8 +351,7 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
             }
         }
         int mcuFound = 0;
-        int MAX_ATTEMPTS = 128;
-        int Attempts = 0;
+        Attempts = 0;
         while(mcuFound < cnt && Attempts < MAX_ATTEMPTS*cnt){
             Attempts++;
             int target = std::uniform_int_distribution<int>(0, totalBankLeaves - 1)(gen);
@@ -373,6 +373,7 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
             ChannelNode &chNode = rt.channels[selected_ch];
             BankNode &bankNode = chNode.banks[selected_bank];
             //选定bank
+
             //ADD: shape of MCU
             std::uniform_real_distribution<double> ran(0, 1);
             int x_num = 1;
@@ -392,7 +393,6 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
                 foundCols &= (bankNode.column_bitmap << i); 
             }
             if(foundCols.none())continue; //如果没有相邻列，则直接下一个target 
-            
             int randStart = std::uniform_int_distribution<int>(0, 1023)(gen);
             for(int col=foundCols._Find_next(randStart);col!=foundCols.size();col=foundCols._Find_next(col)){
                 foundRows.set();
@@ -411,6 +411,7 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
                     if(selected_row==foundRows.size()) selected_row=foundRows._Find_first();
                     int selected_dq=dqDist(gen);
                     for(int i=0;i<x_num;i++){
+                        // std::cout << "["  << i << "]: " << selected_bg << " "<< selected_bank << " " << col+i << " " << selected_row << " " << selected_dq << std::endl;
                         uintptr_t addr=reverseMapping(selected_ch, selected_bank, col+i, selected_row, selected_dq);
                         errors.push_back(addr);
                         for(int j=1;j<=foundColPos[i];j++){      
@@ -425,5 +426,6 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
             }
         }
     }
+    if(Attempts==MAX_ATTEMPTS*cnt)std::cout<<"Time out!!!"<<std::endl;
     return errors;
 }

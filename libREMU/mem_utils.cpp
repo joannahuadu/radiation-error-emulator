@@ -61,7 +61,8 @@ uintptr_t random_uintptr(int seed, uintptr_t start, uintptr_t end) {
 std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, size_t size, std::ofstream& logfile, int error_bit_num, int flip_bit, const std::string& mapping, const std::map<int,int>& errorMap, double z) {
     uintptr_t page_size = sysconf(_SC_PAGE_SIZE);
     std::vector<Pmem> pmems = getPmems(self, Vaddr, size, page_size);
-
+    std::random_device rd;
+    std::mt19937 gen(rd());
     logfile << "Pmems details:" << std::endl;
     for (const auto& pmem : pmems) {
         logfile << "Start PA: " << std::hex << pmem.s_Paddr
@@ -93,11 +94,20 @@ std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, s
         int cntz = 0;
         std::vector<uintptr_t> errors;
         errors.reserve(cnt*num);
+        // dq
         if(z>0 & num>1) {
-            cntz = static_cast<int>(std::round(cnt * z));
+            std::uniform_real_distribution<double> ran(0, 1);
+            int cntnz = 0;
+            while(cntz + cntnz < cnt){
+                double rand_num = ran(gen); 
+                if (rand_num >= (1-z)) cntz+=1;
+                else cntnz+=1;
+            }
+            assert(cntnz + cntz == cnt && "Error: cntnz + cntz is not equal to cnt");
+            // std::cout << cntnz << "--" << cntz << std::endl;
             std::vector<uintptr_t> errors1, errors2;
             if(cntz>0) errors1 = bt_tree.getError(1, cntz, 0.8);
-            if((cnt-cntz)>0) errors2 = bt_tree.getError(num, cnt-cntz, 0.8);
+            if(cntnz>0) errors2 = bt_tree.getError(num, cntnz, 0.8);
             errors.insert(errors.end(), errors1.begin(), errors1.end());
             errors.insert(errors.end(), errors2.begin(), errors2.end());
         }else errors = bt_tree.getError(num, cnt, 0.8);
@@ -129,7 +139,7 @@ std::vector<Vmem> MemUtils::get_error_Va_tree(MemUtils* self, uintptr_t Vaddr, s
         }
         std::bitset<8> bitsAfter(*byteAddress); 
         // logfile << bitsBefore << " -> " << bitsAfter << std::endl; // Print the binary representation
-    }    
+    }
     return total_Verr;
 }
 //random error
