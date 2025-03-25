@@ -4,3 +4,5 @@ example/build**
 run*
 error*
 MCU*
+efficientnet/*
+yolo/*

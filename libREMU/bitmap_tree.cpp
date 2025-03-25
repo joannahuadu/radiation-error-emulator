@@ -337,7 +337,7 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
             int randStart = std::uniform_int_distribution<int>(0, 65535)(gen);
             int selected_row = colNode.row_bitmap._Find_next(randStart);
             if(selected_row==colNode.row_bitmap.size()) selected_row=colNode.row_bitmap._Find_first();
-            // std::cout << "["  << seuFound << "]: " << selected_bg << " "<< selected_bank << " " << selected_col << " " << selected_row  << std::endl;
+            // std::cout << "["  << seuFound << "]: " << selected_ch << " "<< selected_bank << " " << selected_col << " " << selected_row  << std::endl;
             // 根据选中的 channel、bank、column、row 得到物理地址
             uintptr_t addr = reverseMapping(selected_ch, selected_bank, selected_col, selected_row, dqDist(gen));
             errors.push_back(addr);
@@ -411,11 +411,11 @@ std::vector<uintptr_t> BitmapTree::getError(int num, int cnt, float x){
                     if(selected_row==foundRows.size()) selected_row=foundRows._Find_first();
                     int selected_dq=dqDist(gen);
                     for(int i=0;i<x_num;i++){
-                        // std::cout << "["  << i << "]: " << selected_bg << " "<< selected_bank << " " << col+i << " " << selected_row << " " << selected_dq << std::endl;
+                        // std::cout << "["  << i << "]: " << selected_ch << " "<< selected_bank << " " << col+i << " " << selected_row << " " << selected_dq << std::endl;
                         uintptr_t addr=reverseMapping(selected_ch, selected_bank, col+i, selected_row, selected_dq);
                         errors.push_back(addr);
                         for(int j=1;j<=foundColPos[i];j++){      
-                            // std::cout << "[" << i <<", " << j << "]: " << selected_bg << " "<< selected_bank << " " << col+i << " " << selected_row+j << " " << selected_dq << std::endl;                 
+                            // std::cout << "[" << i <<", " << j << "]: " << selected_ch << " "<< selected_bank << " " << col+i << " " << selected_row+j << " " << selected_dq << std::endl;                 
                             uintptr_t addr=reverseMapping(selected_ch, selected_bank, col+i, selected_row+j , selected_dq);
                             errors.push_back(addr);
                         }

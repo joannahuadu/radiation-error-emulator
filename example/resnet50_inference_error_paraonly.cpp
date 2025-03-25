@@ -190,7 +190,7 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    std::string logFileName = engine_name + "_" +std::to_string(bitflip)+"_" +  std::to_string(bitidx) + "_abort796616_"  + std::to_string(time) + ".txt";
+    std::string logFileName = engine_name + "_" +std::to_string(bitflip)+"_" +  std::to_string(bitidx) + "_abort698857_" + std::to_string(time) + ".txt";
     std::ofstream logfile(logFileName);
     if (!logfile.is_open()) {
         std::cerr << "Failed to open log file" << std::endl;
@@ -198,10 +198,10 @@ int main(int argc, char** argv)
         return {};
     }
 
-
     // change your path
     std::string tree_mapping = "../../libREMU/configs/lpddr4_jetson_xavier_nx.yaml";
     std::string error_file = "../../example/error_counts_"+std::to_string(bitflip) + ".txt";
+
     std::cout << "mapping: " << tree_mapping << std::endl;
 
     char *trtModelStream{nullptr};
@@ -220,6 +220,7 @@ int main(int argc, char** argv)
     IRuntime* runtime = createInferRuntime(gLogger);
     assert(runtime != nullptr);
 
+
     uintptr_t Vaddr = reinterpret_cast<uintptr_t>(trtModelStream);
     std::cout << "vaddr: "  << std::hex << Vaddr <<"-"<<std::dec <<size << std::endl;
     // if lineidx == 0, do DNN inference without any error.
@@ -227,7 +228,7 @@ int main(int argc, char** argv)
         std::map<int, int> errorMap = loadErrors(error_file, lineidx); 
         size_t dram_capacity_gb=16;
         MemUtils memUtils(dram_capacity_gb);
-        MemUtils::get_error_Va_tree(&memUtils, Vaddr+300, size-796616, logfile, bitflip, bitidx, tree_mapping, errorMap);
+        MemUtils::get_error_Va_tree(&memUtils, Vaddr+300, size-698857, logfile, bitflip, bitidx, tree_mapping, errorMap);
     }
 
     ICudaEngine* engine = runtime->deserializeCudaEngine(trtModelStream, size, nullptr);
@@ -252,10 +253,11 @@ int main(int argc, char** argv)
     auto classes = read_classes(labels_dir);
     
     int correct = 0;
+    
 
     for (size_t j = 0; j < image_files.size(); j++){
-
         if(j==100) break; 
+        // std::cout << j << " " << image_files[j] << std::endl;
         cv::Mat img = cv::imread(image_files[j]);
         if (img.empty()) continue;
 
